@@ -183,6 +183,52 @@ section {
   border-radius: 4px;
 }
 
+/* Monatsstand form and start screen (ticket 03). */
+.snapshot-form .month {
+  max-width: 12rem;
+}
+
+.snapshot-form .holding {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 0.5rem 0;
+}
+
+.snapshot-form .holding input {
+  width: 10rem;
+  text-align: right;
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.figure {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.figure span {
+  color: var(--muted);
+}
+
+.figure strong {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+}
+
 .dropzone {
   display: grid;
   justify-items: center;

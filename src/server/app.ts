@@ -14,10 +14,14 @@ import {
   createInstitution,
   listStructure,
   loadDocument,
+  netWorthSeries,
+  saveSnapshot,
+  snapshotForm,
   updateAccount,
   updateHolding,
   updateInstitution,
   type Result,
+  type SnapshotInput,
   type WealthDocument,
 } from "../core";
 import * as store from "../store";
@@ -215,6 +219,24 @@ export function createApp(initialConfig: AppConfig): Server {
     "POST /api/holdings/create": command(createHolding),
     "POST /api/holdings/update": command(updateHolding),
 
+    // Monatsstand (Snapshots). `today` is the server's local date, passed into the core.
+    "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
+    "POST /api/snapshots/form": async ({ month }) => {
+      if (!session) return locked();
+      if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+        return error(400, "invalid-month", "Bitte einen gültigen Monat wählen.");
+      }
+      return ok({ form: snapshotForm(session.document, month) });
+    },
+    "POST /api/snapshots/save": async (body) => {
+      if (!session) return locked();
+      const result = saveSnapshot(session.document, { ...(body as SnapshotInput), today: localToday() });
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      await store.save(config.dataFile, session.password, result.document);
+      session.document = result.document;
+      return ok({ form: snapshotForm(result.document, String(body.month)) });
+    },
+
     // CSV import. Files travel as base64 in JSON: { name, contentBase64 }.
     "POST /api/import/preview": async ({ files }) => {
       if (!session) return locked();
@@ -264,6 +286,12 @@ export function createApp(initialConfig: AppConfig): Server {
       sendJson(response, error(500, "internal", "Interner Fehler."));
     }
   });
+}
+
+/** The local calendar date, "YYYY-MM-DD". The only place the clock is read for the core. */
+function localToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 /** `[{ name, contentBase64, ...rest }]` from the UI → `[{ name, bytes, ...rest }]` for the core. */

@@ -7,6 +7,8 @@ export type WealthDocument = {
   institutions: Institution[];
   accounts: Account[];
   holdings: Holding[];
+  /** At most one per month, ordered by month. */
+  snapshots: Snapshot[];
   /** Imported Transactions (Umsätze). They never change any Snapshot. */
   transactions: Transaction[];
   /** One entry per confirmed file import; undoing it removes exactly its Transactions. */
@@ -49,6 +51,27 @@ export type Classification = {
   assetClass: AssetClass;
   liquidity: Liquidity;
   maturityDate: string | null;
+};
+
+/** A calendar month, "YYYY-MM". Its reference date is the month's last day. */
+export type YearMonth = string;
+
+/**
+ * The values recorded for one month. Holdings left out keep their latest earlier
+ * value at query time. Later tickets add fields (Account-level values, Note, Events):
+ * saveSnapshot replaces only holdingValues and keeps every other field.
+ */
+export type Snapshot = {
+  month: YearMonth;
+  holdingValues: HoldingValue[];
+};
+
+/** Amounts in integer cents. A debt's value is entered positive (amount owed). */
+export type HoldingValue = {
+  holdingId: string;
+  marketValue: number;
+  /** Money newly paid in during the month; null when none was recorded. */
+  contribution: number | null;
 };
 
 /** One movement of money on an Account, read from a bank's CSV export. */
@@ -96,7 +119,7 @@ export type ImportRecord = {
   duplicateCount: number;
 };
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -104,6 +127,7 @@ export function createEmptyDocument(): WealthDocument {
     institutions: [],
     accounts: [],
     holdings: [],
+    snapshots: [],
     transactions: [],
     imports: [],
   };

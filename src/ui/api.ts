@@ -7,6 +7,9 @@ import type {
   ImportedFile,
   ImportRecord,
   InstitutionView,
+  NetWorthMonth,
+  SnapshotForm,
+  SnapshotInput,
   Transaction,
   TransactionFilter,
 } from "../core";
@@ -60,6 +63,13 @@ export type Structure = { structure: InstitutionView[] };
 
 /** One backup of the data file; `createdAt` is an ISO 8601 UTC instant. */
 export type Backup = { id: string; createdAt: string };
+
+/** Monatsstand (Snapshots) and the Net worth series. Amounts in integer cents. */
+export const snapshotsApi = {
+  netWorth: () => call<{ series: NetWorthMonth[] }>("GET", "/api/net-worth"),
+  form: (month: string) => call<{ form: SnapshotForm }>("POST", "/api/snapshots/form", { month }),
+  save: (input: Omit<SnapshotInput, "today">) => call<{ form: SnapshotForm }>("POST", "/api/snapshots/save", input),
+};
 
 // Kept apart from `api` so tickets adding endpoints in parallel don't collide.
 export const backupsApi = {

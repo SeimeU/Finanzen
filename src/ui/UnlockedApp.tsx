@@ -3,6 +3,7 @@ import { api } from "./api";
 import { AccountsView } from "./views/AccountsView";
 import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
+import { SnapshotView } from "./views/SnapshotView";
 import { StartView } from "./views/StartView";
 import { TransactionsView } from "./views/TransactionsView";
 
@@ -12,6 +13,7 @@ import { TransactionsView } from "./views/TransactionsView";
  */
 const VIEWS = {
   start: "Übersicht",
+  snapshot: "Monatsstand",
   transactions: "Umsätze",
   import: "Import",
   accounts: "Konten verwalten",
@@ -58,6 +60,7 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
         </button>
       </nav>
       {view === "start" && <StartView />}
+      {view === "snapshot" && <SnapshotView />}
       {view === "transactions" && <TransactionsView />}
       {view === "import" && <ImportView />}
       {view === "accounts" && <AccountsView />}
