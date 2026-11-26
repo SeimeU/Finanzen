@@ -11,12 +11,15 @@ export {
   type Holding,
   type Institution,
   type HoldingValue,
+  type MonthEvent,
   type Liquidity,
   type Snapshot,
   type YearMonth,
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
+export * from "./notes";
+export * from "./accountDetail";
 export { type ImportAccountChoice, type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
 export {
   confirmImport,
