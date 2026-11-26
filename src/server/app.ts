@@ -1,9 +1,20 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { stat } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from "node:path";
-import { createEmptyDocument, loadDocument, type WealthDocument } from "../core";
+import {
+  createAccount,
+  createEmptyDocument,
+  createHolding,
+  createInstitution,
+  listStructure,
+  loadDocument,
+  updateAccount,
+  updateHolding,
+  updateInstitution,
+  type Result,
+  type WealthDocument,
+} from "../core";
 import * as store from "../store";
 import { writeSettings } from "./settings";
 
@@ -41,6 +52,22 @@ export function createApp(initialConfig: AppConfig): Server {
     if (!session) return;
     lockTimer = setTimeout(() => (session = null), lockTimeoutMs);
     lockTimer.unref();
+  }
+
+  /**
+   * Runs a core command on the unlocked document, saves the result, then replies
+   * with the command's extra fields (e.g. a new id) plus the updated `structure`.
+   */
+  function command<I>(cmd: (document: WealthDocument, input: I) => Result<{ document: WealthDocument }>): Handler {
+    return async (body) => {
+      if (!session) return error(423, "locked", "Die App ist gesperrt.");
+      const result = cmd(session.document, body as I);
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      const { ok: _, document, ...rest } = result;
+      await store.save(config.dataFile, session.password, document);
+      session.document = document;
+      return ok({ ...rest, structure: listStructure(document) });
+    };
   }
 
   const routes: Record<string, Handler> = {
@@ -173,6 +200,15 @@ export function createApp(initialConfig: AppConfig): Server {
       if (config.settingsFile) await writeSettings(config.settingsFile, { dataFile: target });
       return ok({ dataFile: target });
     },
+
+    "GET /api/structure": async () =>
+      session ? ok({ structure: listStructure(session.document) }) : error(423, "locked", "Die App ist gesperrt."),
+    "POST /api/institutions/create": command(createInstitution),
+    "POST /api/institutions/update": command(updateInstitution),
+    "POST /api/accounts/create": command(createAccount),
+    "POST /api/accounts/update": command(updateAccount),
+    "POST /api/holdings/create": command(createHolding),
+    "POST /api/holdings/update": command(updateHolding),
   };
 
   return createServer(async (request, response) => {

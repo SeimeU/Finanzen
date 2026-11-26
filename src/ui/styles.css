@@ -75,29 +75,6 @@ button {
   color: var(--muted);
 }
 
-.topbar {
-  display: flex;
-  gap: 0.5rem;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 1rem 1rem 0;
-}
-
-.topbar button {
-  background: transparent;
-  color: var(--accent);
-}
-
-.topbar button[aria-current="page"] {
-  background: var(--surface);
-  font-weight: 600;
-}
-
-.topbar .lock {
-  margin-left: auto;
-  border: 1px solid var(--accent);
-}
-
 .settings-section {
   max-width: 26rem;
   margin-bottom: 2rem;
@@ -108,15 +85,81 @@ button {
   color: #1e6b34;
 }
 
-button.secondary {
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
+.nav {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
 }
 
-.toolbar {
+.nav button[aria-current="page"] {
+  background: var(--text);
+}
+
+button.secondary {
+  padding: 0.3rem 0.6rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid currentColor;
+}
+
+select {
+  font: inherit;
+  padding: 0.5rem;
+}
+
+.row {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.institution {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+}
+
+.account {
+  margin: 1rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid #c5cbd3;
+}
+
+.meta {
+  color: var(--muted);
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--warning-bg);
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.holdings li {
+  margin: 0.5rem 0;
+}
+
+.inline-form {
+  margin: 0.75rem 0;
+  max-width: 40rem;
+}
+
+.checkbox {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+fieldset {
+  border: 1px solid #c5cbd3;
+  border-radius: 4px;
 }
 
 section {
@@ -138,4 +181,11 @@ section {
   padding: 0.5rem 0.75rem;
   background: var(--surface);
   border-radius: 4px;
+}
+
+.nav .lock {
+  margin-left: auto;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
 }

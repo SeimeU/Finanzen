@@ -1,4 +1,4 @@
-/** Start screen. Empty for now; later tickets add Net worth and charts. Navigation lives in UnlockedShell. */
+/** Start screen. Empty for now; later tickets add Net worth and charts. Navigation is in UnlockedApp. */
 export function StartView() {
   return (
     <main className="page">

@@ -1,4 +1,5 @@
 // The only place the UI talks to the server. Same origin, JSON in and out.
+import type { AccountInput, Classification, HoldingInput, InstitutionView } from "../core";
 
 export type AppState = "new" | "locked" | "unlocked";
 
@@ -32,7 +33,20 @@ export const api = {
     call<object>("POST", "/api/password", { currentPassword, newPassword }),
   settings: () => call<{ dataFile: string }>("GET", "/api/settings"),
   moveDataFile: (path: string) => call<{ dataFile: string }>("POST", "/api/data-file", { path }),
+
+  structure: () => call<Structure>("GET", "/api/structure"),
+  createInstitution: (input: { name: string }) => call<Structure>("POST", "/api/institutions/create", input),
+  updateInstitution: (input: { id: string; name: string }) => call<Structure>("POST", "/api/institutions/update", input),
+  createAccount: (input: AccountInput) => call<Structure>("POST", "/api/accounts/create", input),
+  updateAccount: (input: { id: string } & Omit<AccountInput, "institutionId">) =>
+    call<Structure>("POST", "/api/accounts/update", input),
+  createHolding: (input: HoldingInput) => call<Structure>("POST", "/api/holdings/create", input),
+  updateHolding: (input: { id: string; name: string; classification: Classification }) =>
+    call<Structure>("POST", "/api/holdings/update", input),
 };
+
+/** Every structure command replies with the whole updated tree. */
+export type Structure = { structure: InstitutionView[] };
 
 /** One backup of the data file; `createdAt` is an ISO 8601 UTC instant. */
 export type Backup = { id: string; createdAt: string };

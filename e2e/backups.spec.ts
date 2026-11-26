@@ -1,10 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { createEmptyDocument } from "../src/core";
 import { load, save } from "../src/store";
 import { expect, test } from "./fixtures";
 
-const earlier = { schemaVersion: 1, note: "früherer Stand" };
-const later = { schemaVersion: 1, note: "späterer Stand" };
+// Current-schema documents, so unlocking does not migrate (and change) them.
+const earlier = { ...createEmptyDocument(), note: "früherer Stand" };
+const later = { ...createEmptyDocument(), note: "späterer Stand" };
 
 test("restore an earlier state from the backups in the settings", async ({ page, app }) => {
   await save(app.dataFile, "geheim123", earlier);
