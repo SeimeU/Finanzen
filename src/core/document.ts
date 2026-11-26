@@ -9,6 +9,10 @@ export type WealthDocument = {
   holdings: Holding[];
   /** At most one per month, ordered by month. */
   snapshots: Snapshot[];
+  /** Imported Transactions (Umsätze). They never change any Snapshot. */
+  transactions: Transaction[];
+  /** One entry per confirmed file import; undoing it removes exactly its Transactions. */
+  imports: ImportRecord[];
 };
 
 export type Institution = { id: string; name: string };
@@ -70,8 +74,61 @@ export type HoldingValue = {
   contribution: number | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 3;
+/** One movement of money on an Account, read from a bank's CSV export. */
+export type Transaction = {
+  id: string;
+  accountId: string;
+  importId: string;
+  /** "YYYY-MM-DD" */
+  bookingDate: string;
+  /** Signed EUR cents; outflows are negative. */
+  amountCents: number;
+  counterpartyName: string;
+  /** Normalized: upper case, no spaces. */
+  counterpartyIban: string | null;
+  paymentReference: string;
+  purpose: string;
+  origin: TransactionOrigin;
+};
+
+/**
+ * What the bank itself said about a Transaction, kept for classification
+ * (Trades, Transfers, Categories). Fields a format doesn't have are null.
+ */
+export type TransactionOrigin = {
+  /** Trade Republic: TRADING, CASH or CORPORATE_ACTION. */
+  category: string | null;
+  /** Trade Republic: BUY, CUSTOMER_INBOUND, INTEREST_PAYMENT, …, *_CANCELLED. */
+  type: string | null;
+  transactionId: string | null;
+  feeCents: number | null;
+  taxCents: number | null;
+  securityName: string | null;
+  isin: string | null;
+};
+
+export type ImportRecord = {
+  id: string;
+  fileName: string;
+  /** The Import profile the file was read with, e.g. "trade-republic". */
+  profileId: string;
+  accountId: string;
+  /** ISO 8601 UTC instant, passed in by the caller. */
+  importedAt: string;
+  transactionCount: number;
+  duplicateCount: number;
+};
+
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export function createEmptyDocument(): WealthDocument {
-  return { schemaVersion: CURRENT_SCHEMA_VERSION, institutions: [], accounts: [], holdings: [], snapshots: [] };
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    institutions: [],
+    accounts: [],
+    holdings: [],
+    snapshots: [],
+    transactions: [],
+    imports: [],
+  };
 }
