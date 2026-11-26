@@ -13,3 +13,15 @@ export {
   type Liquidity,
 } from "./document";
 export * from "./structure";
+export { type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
+export {
+  confirmImport,
+  listImports,
+  previewImport,
+  undoImport,
+  type FilePreview,
+  type ImportedFile,
+  type ImportFileInput,
+} from "./import/pipeline";
+export type { ImportProfile } from "./import/profile";
+export { searchTransactions, type TransactionFilter } from "./transactions";
