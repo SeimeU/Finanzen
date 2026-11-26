@@ -27,5 +27,14 @@ export {
   type ImportedFile,
   type ImportFileInput,
 } from "./import/pipeline";
-export type { ImportProfile } from "./import/profile";
+export type { ImportProfile, ParsedTransaction } from "./import/profile";
+export { previewImportProfile, saveImportProfile, type ImportProfilePreview } from "./import/generic";
+export {
+  GENERIC_DATE_FORMATS,
+  GENERIC_DECIMAL_SEPARATORS,
+  GENERIC_SEPARATORS,
+  type GenericColumnMapping,
+  type GenericImportProfile,
+  type GenericProfileSettings,
+} from "./document";
 export { searchTransactions, type TransactionFilter } from "./transactions";

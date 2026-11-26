@@ -31,6 +31,8 @@ export type ImportProfile = {
   label: string;
   /** Whether an Account at this Institution is a likely target for this profile's files. */
   matchesInstitution: (institutionName: string) => boolean;
+  /** A profile saved for one Account (generic profiles) suggests that Account directly. */
+  accountId?: string;
   /** Cheap check on the decoded text, e.g. the header row. Must not throw. */
   detect: (text: string) => boolean;
   parse: (text: string) => ParseResult;
