@@ -1,5 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatEur } from "./format";
+import { formatDate, formatDateTime, formatEur, formatEurInput, formatMonth, parseEur } from "./format";
+
+describe("parseEur (German input → integer cents)", () => {
+  it.each([
+    ["1.234,56", 123456],
+    ["1234,5", 123450],
+    ["1234", 123400],
+    [" 12.000 ", 1200000],
+    ["0,07", 7],
+    ["-15.000,00", -1500000],
+    ["1.234,56 €", 123456],
+  ])("%s → %i", (text, cents) => {
+    expect(parseEur(text)).toBe(cents);
+  });
+
+  it.each(["", "abc", "1,234", "1.23,45", "12,3,4"])("%j is not an amount", (text) => {
+    expect(parseEur(text)).toBeNull();
+  });
+});
+
+describe("formatEurInput (cents → editable German amount)", () => {
+  it.each([
+    [123456, "1.234,56"],
+    [5, "0,05"],
+    [-1500000, "-15.000,00"],
+  ])("%i → %s", (cents, text) => {
+    expect(formatEurInput(cents)).toBe(text);
+  });
+});
+
+describe("formatMonth", () => {
+  it("2026-03 → März 2026", () => {
+    expect(formatMonth("2026-03")).toBe("März 2026");
+  });
+});
 
 describe("formatEur (amounts are integer cents)", () => {
   it.each([

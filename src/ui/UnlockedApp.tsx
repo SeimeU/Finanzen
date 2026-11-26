@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AccountsView } from "./views/AccountsView";
 import { SettingsView } from "./views/SettingsView";
+import { SnapshotView } from "./views/SnapshotView";
 import { StartView } from "./views/StartView";
 
 /**
@@ -9,6 +10,7 @@ import { StartView } from "./views/StartView";
  */
 const VIEWS = {
   start: "Übersicht",
+  snapshot: "Monatsstand",
   accounts: "Konten verwalten",
   settings: "Einstellungen",
 } as const;
@@ -32,6 +34,7 @@ export function UnlockedApp() {
         ))}
       </nav>
       {view === "start" && <StartView />}
+      {view === "snapshot" && <SnapshotView />}
       {view === "accounts" && <AccountsView />}
       {view === "settings" && <SettingsView onBack={() => setView("start")} />}
     </>

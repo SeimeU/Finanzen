@@ -13,6 +13,8 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
   0: (document) => ({ ...document, schemaVersion: 1 }),
   // 1 → 2: Institutions, Accounts and Holdings.
   1: (document) => ({ ...document, schemaVersion: 2, institutions: [], accounts: [], holdings: [] }),
+  // 2 → 3: Snapshots.
+  2: (document) => ({ ...document, schemaVersion: 3, snapshots: [] }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

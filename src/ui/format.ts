@@ -9,6 +9,37 @@ export function formatEur(cents: number): string {
   return `${sign}${euros},${rest} €`;
 }
 
+/** 123456 → "1.234,56": formatEur without the currency, for pre-filling an input. */
+export function formatEurInput(cents: number): string {
+  return formatEur(cents).slice(0, -2);
+}
+
+/**
+ * German amount as typed ("1.234,56", "1234,5", "12.000", optional "€") → integer cents,
+ * or null if it is not an amount. Dots group thousands, the comma is the decimal separator.
+ */
+export function parseEur(text: string): number | null {
+  const match = text
+    .replace(/€/g, "")
+    .trim()
+    .match(/^(-?)(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/);
+  if (!match) return null;
+  const [, sign, euros, rest = ""] = match;
+  const cents = Number(euros!.replace(/\./g, "")) * 100 + Number(rest.padEnd(2, "0"));
+  return sign ? -cents : cents;
+}
+
+const MONTH_NAMES = [
+  "Jänner", "Februar", "März", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Dezember",
+];
+
+/** "2026-03" → "März 2026". */
+export function formatMonth(yearMonth: string): string {
+  const [year, month] = yearMonth.split("-");
+  return `${MONTH_NAMES[Number(month) - 1]} ${year}`;
+}
+
 /** "2025-03-31" → "31.03.2025". Takes an ISO calendar date, never a Date (no time-zone shifts). */
 export function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");

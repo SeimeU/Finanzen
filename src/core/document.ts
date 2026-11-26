@@ -7,6 +7,8 @@ export type WealthDocument = {
   institutions: Institution[];
   accounts: Account[];
   holdings: Holding[];
+  /** At most one per month, ordered by month. */
+  snapshots: Snapshot[];
 };
 
 export type Institution = { id: string; name: string };
@@ -47,8 +49,29 @@ export type Classification = {
   maturityDate: string | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 2;
+/** A calendar month, "YYYY-MM". Its reference date is the month's last day. */
+export type YearMonth = string;
+
+/**
+ * The values recorded for one month. Holdings left out keep their latest earlier
+ * value at query time. Later tickets add fields (Account-level values, Note, Events):
+ * saveSnapshot replaces only holdingValues and keeps every other field.
+ */
+export type Snapshot = {
+  month: YearMonth;
+  holdingValues: HoldingValue[];
+};
+
+/** Amounts in integer cents. A debt's value is entered positive (amount owed). */
+export type HoldingValue = {
+  holdingId: string;
+  marketValue: number;
+  /** Money newly paid in during the month; null when none was recorded. */
+  contribution: number | null;
+};
+
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export function createEmptyDocument(): WealthDocument {
-  return { schemaVersion: CURRENT_SCHEMA_VERSION, institutions: [], accounts: [], holdings: [] };
+  return { schemaVersion: CURRENT_SCHEMA_VERSION, institutions: [], accounts: [], holdings: [], snapshots: [] };
 }

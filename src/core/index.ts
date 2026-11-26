@@ -10,6 +10,10 @@ export {
   type Classification,
   type Holding,
   type Institution,
+  type HoldingValue,
   type Liquidity,
+  type Snapshot,
+  type YearMonth,
 } from "./document";
 export * from "./structure";
+export * from "./snapshots";
