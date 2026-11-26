@@ -21,7 +21,7 @@ import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
 const COLUMN_LABELS: Record<keyof GenericColumnMapping, string> = {
   bookingDate: "Datum",
   amount: "Betrag",
-  counterpartyName: "Gegenseite",
+  counterpartyName: "Gegenüber",
   purpose: "Verwendungszweck",
   counterpartyIban: "IBAN",
   paymentReference: "Zahlungsreferenz",

@@ -138,7 +138,7 @@ describe("generic Import profiles", () => {
     [{ columns: { ...SEMICOLON_SETTINGS.columns, paymentReference: 9 } }, "column-missing", "Die Spalte 10 für „Zahlungsreferenz“ gibt es in der Datei nicht."],
     [{ skipLines: 1 }, "bad-row", "Zeile 2: „Datum“ ist kein Datum im Format DD.MM.YYYY. Es wurde nichts importiert."],
     [{ decimalSeparator: "." }, "bad-row", "Zeile 3: „-1.234,56“ ist kein gültiger Betrag. Es wurde nichts importiert."],
-    [{ separator: "," }, "column-missing", "Die Spalte 3 für „Gegenseite“ gibt es in der Datei nicht."],
+    [{ separator: "," }, "column-missing", "Die Spalte 3 für „Gegenüber“ gibt es in der Datei nicht."],
     [{ skipLines: -1 }, "invalid-profile", "Die Anzahl der zu überspringenden Zeilen muss zwischen 0 und 100 liegen."],
   ] as const)("refuses to save a profile the sample does not fit (%j)", (change, code, message) => {
     const { document, giro } = withTwoAccounts();

@@ -3,6 +3,7 @@ import type { FilePreview, ImportRecord } from "../../core";
 import { api, ApiError, importApi, toUploadFile, type UploadFile } from "../api";
 import { formatDate, formatDateTime } from "../format";
 import { accountOptions } from "../labels";
+import { ImportProfileSetup } from "./ImportProfileSetup";
 
 type Pending = { upload: UploadFile; preview: FilePreview; accountId: string };
 
@@ -54,6 +55,16 @@ export function ImportView() {
       setPending(pending.map((p, i) => (i === index ? { ...p, accountId, preview: files[0]! } : p)));
     });
 
+  /** After an Importprofil was saved for a file, preview it again so the new profile reads it. */
+  const repreview = (index: number) =>
+    run(async () => {
+      const item = pending[index]!;
+      const { files } = await importApi.preview([item.upload]);
+      const preview = files[0]!;
+      const accountId = preview.ok ? (preview.suggestedAccountId ?? "") : "";
+      setPending((current) => current.map((p, i) => (i === index ? { ...p, accountId, preview } : p)));
+    });
+
   const readable = pending.filter((p) => p.preview.ok);
   const canConfirm = readable.length > 0 && readable.every((p) => p.accountId !== "");
 
@@ -91,6 +102,7 @@ export function ImportView() {
           item={item}
           accounts={accounts}
           onChooseAccount={(id) => chooseAccount(index, id)}
+          onProfileSaved={() => repreview(index)}
         />
       ))}
       {pending.length > 0 && (
@@ -169,12 +181,15 @@ function FilePreviewSection({
   item,
   accounts,
   onChooseAccount,
+  onProfileSaved,
 }: {
   item: Pending;
   accounts: { id: string; label: string }[];
   onChooseAccount: (accountId: string) => void;
+  onProfileSaved: () => void;
 }) {
   const { preview } = item;
+  const [settingUpProfile, setSettingUpProfile] = useState(false);
   return (
     <section aria-label={item.upload.name} className="institution">
       <h2>{item.upload.name}</h2>
@@ -200,7 +215,24 @@ function FilePreviewSection({
           </label>
         </>
       ) : (
-        <p role="alert">{preview.error.message}</p>
+        <>
+          <p role="alert">{preview.error.message}</p>
+          {preview.error.code === "unknown-format" &&
+            (settingUpProfile ? (
+              <ImportProfileSetup
+                upload={item.upload}
+                accounts={accounts}
+                onSaved={() => {
+                  setSettingUpProfile(false);
+                  onProfileSaved();
+                }}
+              />
+            ) : (
+              <button type="button" className="secondary" onClick={() => setSettingUpProfile(true)}>
+                Importprofil anlegen
+              </button>
+            ))}
+        </>
       )}
     </section>
   );
