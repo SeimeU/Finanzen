@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt } from "node:crypto";
 import { open, readFile, rename } from "node:fs/promises";
+import { keepBackupOf } from "./backupFiles";
 
 /**
  * Encrypted file store (ADR 0002). Stores any JSON value; it knows nothing
@@ -60,8 +61,25 @@ export async function load(path: string, password: string): Promise<unknown> {
   return JSON.parse(plaintext.toString("utf8"));
 }
 
-/** Encrypts and writes atomically: a temporary file is written, synced, then renamed over `path`. */
+/**
+ * Encrypts and writes atomically: a temporary file is written, synced, then renamed over `path`.
+ * The previous file is first kept as a backup (see ./backupFiles.ts).
+ */
 export async function save(path: string, password: string, value: unknown): Promise<void> {
+  await writeEncrypted(path, password, value, { keepBackup: true });
+}
+
+/**
+ * Like `save`, but optionally without keeping a backup of the previous file. Used to
+ * re-encrypt in place (password change), where a backup under the old password would
+ * defeat the purpose. Not exported from the store's index.
+ */
+export async function writeEncrypted(
+  path: string,
+  password: string,
+  value: unknown,
+  { keepBackup }: { keepBackup: boolean },
+): Promise<void> {
   const plaintext = Buffer.from(JSON.stringify(value), "utf8");
   const salt = randomBytes(SALT_LENGTH);
   const nonce = randomBytes(NONCE_LENGTH);
@@ -85,6 +103,7 @@ export async function save(path: string, password: string, value: unknown): Prom
   } finally {
     await handle.close();
   }
+  if (keepBackup) await keepBackupOf(path);
   await rename(temporaryPath, path);
 }
 

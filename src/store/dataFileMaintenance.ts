@@ -1,8 +1,8 @@
 import { constants, existsSync } from "node:fs";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { load, save } from "./encryptedFileStore";
-import { listBackupFiles, relocatedBackupFile } from "./backupLocations";
+import { allBackupFiles, relocatedBackupFile, removeEmptyBackupDir } from "./backupFiles";
+import { load, writeEncrypted } from "./encryptedFileStore";
 
 /** A file already exists where the data file (or one of its backups) would be moved to. Nothing was moved. */
 export class TargetExistsError extends Error {
@@ -19,10 +19,11 @@ export class TargetExistsError extends Error {
  * Backups are written first and the data file last.
  */
 export async function changePassword(dataFile: string, oldPassword: string, newPassword: string): Promise<void> {
-  const files = [...(await listBackupFiles(dataFile)), dataFile];
+  const files = [...(await allBackupFiles(dataFile)), dataFile];
   const contents: unknown[] = [];
   for (const file of files) contents.push(await load(file, oldPassword));
-  for (const [i, file] of files.entries()) await save(file, newPassword, contents[i]);
+  // Re-encrypt in place: no new backup, which would still be readable with the old password.
+  for (const [i, file] of files.entries()) await writeEncrypted(file, newPassword, contents[i], { keepBackup: false });
 }
 
 /**
@@ -32,14 +33,14 @@ export async function changePassword(dataFile: string, oldPassword: string, newP
  */
 export async function moveDataFile(fromDataFile: string, toDataFile: string): Promise<void> {
   if (resolve(fromDataFile) === resolve(toDataFile)) return;
-  const backups = await listBackupFiles(fromDataFile);
+  const backups = await allBackupFiles(fromDataFile);
   const moves: Array<[string, string]> = [
     [fromDataFile, toDataFile],
     ...backups.map((b): [string, string] => [b, relocatedBackupFile(b, fromDataFile, toDataFile)]),
   ];
   for (const [, to] of moves) if (existsSync(to)) throw new TargetExistsError(to);
 
-  await mkdir(dirname(toDataFile), { recursive: true });
+  for (const [, to] of moves) await mkdir(dirname(to), { recursive: true });
   const copied: string[] = [];
   try {
     for (const [from, to] of moves) {
@@ -51,4 +52,5 @@ export async function moveDataFile(fromDataFile: string, toDataFile: string): Pr
     throw e;
   }
   for (const [from] of moves) await rm(from, { force: true });
+  await removeEmptyBackupDir(fromDataFile);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatEur } from "./format";
+import { formatDate, formatDateTime, formatEur } from "./format";
 
 describe("formatEur (amounts are integer cents)", () => {
   it.each([
@@ -21,5 +21,15 @@ describe("formatDate (ISO calendar date in, German date out)", () => {
     ["2024-01-05", "05.01.2024"],
   ])("%s → %s", (iso, expected) => {
     expect(formatDate(iso)).toBe(expected);
+  });
+});
+
+describe("formatDateTime (UTC instant in, German local date and time out)", () => {
+  it.each([
+    ["2026-11-26T22:05:09.123Z", "Europe/Vienna", "26.11.2026 23:05:09"],
+    ["2026-07-31T22:30:00.000Z", "Europe/Vienna", "01.08.2026 00:30:00"],
+    ["2026-01-02T03:04:05.000Z", "UTC", "02.01.2026 03:04:05"],
+  ])("%s in %s → %s", (iso, timeZone, expected) => {
+    expect(formatDateTime(iso, timeZone)).toBe(expected);
   });
 });

@@ -107,3 +107,35 @@ button {
   margin: 0;
   color: #1e6b34;
 }
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+section {
+  margin-top: 2rem;
+}
+
+.backups {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.backups li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border-radius: 4px;
+}
