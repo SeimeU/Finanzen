@@ -1,4 +1,5 @@
 // The only place the UI talks to the server. Same origin, JSON in and out.
+import type { AccountInput, Classification, HoldingInput, InstitutionView } from "../core";
 
 export type AppState = "new" | "locked" | "unlocked";
 
@@ -28,4 +29,17 @@ export const api = {
   setup: (password: string) => call<{ state: AppState }>("POST", "/api/setup", { password }),
   unlock: (password: string) => call<{ state: AppState }>("POST", "/api/unlock", { password }),
   lock: () => call<{ state: AppState }>("POST", "/api/lock"),
+
+  structure: () => call<Structure>("GET", "/api/structure"),
+  createInstitution: (input: { name: string }) => call<Structure>("POST", "/api/institutions/create", input),
+  updateInstitution: (input: { id: string; name: string }) => call<Structure>("POST", "/api/institutions/update", input),
+  createAccount: (input: AccountInput) => call<Structure>("POST", "/api/accounts/create", input),
+  updateAccount: (input: { id: string } & Omit<AccountInput, "institutionId">) =>
+    call<Structure>("POST", "/api/accounts/update", input),
+  createHolding: (input: HoldingInput) => call<Structure>("POST", "/api/holdings/create", input),
+  updateHolding: (input: { id: string; name: string; classification: Classification }) =>
+    call<Structure>("POST", "/api/holdings/update", input),
 };
+
+/** Every structure command replies with the whole updated tree. */
+export type Structure = { structure: InstitutionView[] };
