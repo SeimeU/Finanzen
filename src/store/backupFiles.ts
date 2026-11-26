@@ -1,0 +1,76 @@
+import { existsSync } from "node:fs";
+import { copyFile, mkdir, readdir, rename, rm } from "node:fs/promises";
+import { basename, dirname, extname, join } from "node:path";
+
+/**
+ * Backup files of a data file. Before each save the previous data file is copied,
+ * still encrypted, into `<data dir>/backups/` as `<name>-<UTC timestamp>-<seq>.dat`.
+ * The newest MAX_BACKUPS are kept; older ones are deleted.
+ */
+export const MAX_BACKUPS = 30;
+
+/** One backup of the data file. `id` is opaque; `createdAt` is an ISO 8601 UTC timestamp. */
+export type Backup = { id: string; createdAt: string };
+
+/** No backup with this id exists for the data file. */
+export class BackupNotFoundError extends Error {
+  constructor(id: string) {
+    super(`backup not found: ${id}`);
+    this.name = "BackupNotFoundError";
+  }
+}
+
+function backupDir(dataFile: string) {
+  return join(dirname(dataFile), "backups");
+}
+
+function prefix(dataFile: string) {
+  return `${basename(dataFile, extname(dataFile))}-`;
+}
+
+// "<prefix>2026-11-26T10-20-30-123Z-000.dat": sorts chronologically by name.
+const STAMP = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z-\d{3}\.dat$/;
+
+/** Copies the current data file (if any) into the backups and rotates out the oldest. */
+export async function keepBackupOf(dataFile: string, now = new Date()): Promise<void> {
+  if (!existsSync(dataFile)) return;
+  const dir = backupDir(dataFile);
+  await mkdir(dir, { recursive: true });
+  const stamp = now.toISOString().replace(/:/g, "-").replace(".", "-");
+  let sequence = 0;
+  let target: string;
+  do {
+    target = join(dir, `${prefix(dataFile)}${stamp}-${String(sequence++).padStart(3, "0")}.dat`);
+  } while (existsSync(target));
+  const temporaryPath = `${target}.tmp`;
+  await copyFile(dataFile, temporaryPath);
+  await rename(temporaryPath, target);
+
+  const names = await backupNames(dataFile);
+  for (const name of names.slice(MAX_BACKUPS)) await rm(join(dir, name));
+}
+
+/** The backups of the data file, newest first. */
+export async function listBackups(dataFile: string): Promise<Backup[]> {
+  const names = await backupNames(dataFile);
+  return names.map((name) => {
+    const [, date, h, m, s, ms] = STAMP.exec(name.slice(prefix(dataFile).length))!;
+    return { id: name, createdAt: `${date}T${h}:${m}:${s}.${ms}Z` };
+  });
+}
+
+/** The file of a listed backup; throws BackupNotFoundError for anything else. */
+export async function backupFile(dataFile: string, id: string): Promise<string> {
+  if (!(await backupNames(dataFile)).includes(id)) throw new BackupNotFoundError(id);
+  return join(backupDir(dataFile), id);
+}
+
+async function backupNames(dataFile: string): Promise<string[]> {
+  const dir = backupDir(dataFile);
+  if (!existsSync(dir)) return [];
+  const p = prefix(dataFile);
+  return (await readdir(dir))
+    .filter((name) => name.startsWith(p) && STAMP.test(name.slice(p.length)))
+    .sort()
+    .reverse();
+}

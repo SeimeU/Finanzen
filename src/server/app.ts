@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dirname, extname, join, normalize, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, normalize, sep } from "node:path";
 import {
   createAccount,
   createEmptyDocument,
@@ -83,6 +83,58 @@ export function createApp(config: AppConfig): Server {
       return ok({ state: "unlocked" });
     },
 
+    "GET /api/backups": async () => {
+      if (!session) return locked();
+      return ok({ backups: await store.listBackups(config.dataFile) });
+    },
+
+    "POST /api/backups/restore": async ({ id }) => {
+      if (!session) return locked();
+      if (typeof id !== "string") return error(400, "backup-required", "Bitte eine Sicherung auswählen.");
+      let raw: unknown;
+      try {
+        raw = await store.restoreBackup(config.dataFile, session.password, id);
+      } catch (e) {
+        if (e instanceof store.BackupNotFoundError) {
+          return error(404, "backup-not-found", "Diese Sicherung gibt es nicht mehr.");
+        }
+        if (e instanceof store.WrongPasswordError) {
+          return error(422, "backup-wrong-password", "Diese Sicherung ist mit einem anderen Passwort verschlüsselt.");
+        }
+        throw e;
+      }
+      const result = loadDocument(raw);
+      if (!result.ok) return error(422, result.error.code, result.error.message);
+      session.document = result.document;
+      return ok({ backups: await store.listBackups(config.dataFile) });
+    },
+
+    "GET /api/export": async () => {
+      if (!session) return locked();
+      const today = new Date().toISOString().slice(0, 10);
+      return ok({ suggestedPath: join(dirname(config.dataFile), `vermoegen-export-${today}.json`) });
+    },
+
+    "POST /api/export": async ({ path }) => {
+      if (!session) return locked();
+      if (typeof path !== "string" || !isAbsolute(path)) {
+        return error(400, "export-path-required", "Bitte einen vollständigen Dateipfad angeben, z. B. E:\\vermoegen.json.");
+      }
+      try {
+        await store.exportUnencrypted(path, session.document);
+      } catch (e) {
+        if (e instanceof store.ExportTargetExistsError) {
+          return error(409, "export-target-exists", "Diese Datei gibt es bereits. Bitte einen anderen Namen wählen.");
+        }
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === "ENOENT" || code === "EACCES" || code === "EPERM" || code === "EISDIR") {
+          return error(400, "export-failed", "Die Datei konnte dort nicht geschrieben werden. Gibt es den Ordner?");
+        }
+        throw e;
+      }
+      return ok({ path });
+    },
+
     "POST /api/lock": async () => {
       session = null;
       return ok({ state: "locked" });
@@ -115,6 +167,10 @@ export function createApp(config: AppConfig): Server {
       sendJson(response, error(500, "internal", "Interner Fehler."));
     }
   });
+}
+
+function locked(): Reply {
+  return error(423, "locked", "Die App ist gesperrt. Bitte erneut entsperren.");
 }
 
 function ok(body: unknown): Reply {

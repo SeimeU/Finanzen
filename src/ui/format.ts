@@ -14,3 +14,19 @@ export function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
   return `${day}.${month}.${year}`;
 }
+
+/** "2026-11-26T22:05:09Z" → "26.11.2026 23:05:09" in the browser's time zone (or `timeZone`). */
+export function formatDateTime(isoInstant: string, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat("de-AT", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(isoInstant));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value;
+  return `${part("day")}.${part("month")}.${part("year")} ${part("hour")}:${part("minute")}:${part("second")}`;
+}

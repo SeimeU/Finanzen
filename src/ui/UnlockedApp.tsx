@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AccountsView } from "./views/AccountsView";
+import { SettingsView } from "./views/SettingsView";
 import { StartView } from "./views/StartView";
 
 /**
@@ -9,6 +10,7 @@ import { StartView } from "./views/StartView";
 const VIEWS = {
   start: "Übersicht",
   accounts: "Konten verwalten",
+  settings: "Einstellungen",
 } as const;
 
 type ViewKey = keyof typeof VIEWS;
@@ -31,6 +33,7 @@ export function UnlockedApp() {
       </nav>
       {view === "start" && <StartView />}
       {view === "accounts" && <AccountsView />}
+      {view === "settings" && <SettingsView onBack={() => setView("start")} />}
     </>
   );
 }
