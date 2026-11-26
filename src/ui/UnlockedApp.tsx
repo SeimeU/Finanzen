@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { AccountsView } from "./views/AccountsView";
+import { CategoriesView } from "./views/CategoriesView";
+import { InboxView } from "./views/InboxView";
 import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
 import { SnapshotView } from "./views/SnapshotView";
@@ -15,6 +17,8 @@ const VIEWS = {
   start: "Übersicht",
   snapshot: "Monatsstand",
   transactions: "Umsätze",
+  inbox: "Nicht kategorisiert",
+  categories: "Kategorien",
   import: "Import",
   accounts: "Konten verwalten",
   settings: "Einstellungen",
@@ -62,6 +66,8 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
       {view === "start" && <StartView />}
       {view === "snapshot" && <SnapshotView />}
       {view === "transactions" && <TransactionsView />}
+      {view === "inbox" && <InboxView />}
+      {view === "categories" && <CategoriesView />}
       {view === "import" && <ImportView />}
       {view === "accounts" && <AccountsView />}
       {view === "settings" && <SettingsView />}

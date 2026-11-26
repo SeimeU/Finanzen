@@ -274,3 +274,31 @@ table.transactions .amount {
   color: var(--accent);
   border: 1px solid var(--accent);
 }
+
+/* Kategorien (ticket 16). */
+.categories,
+.categories ul {
+  list-style: none;
+  padding: 0;
+}
+
+.categories .category-top {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+}
+
+.categories ul {
+  margin: 0.5rem 0 0 1.5rem;
+}
+
+.categories .category {
+  margin: 0.25rem 0;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
