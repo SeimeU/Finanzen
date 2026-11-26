@@ -5,12 +5,15 @@ import { createApp } from "./app";
 // Configuration via environment (used by the e2e tests):
 //   FINANZEN_DATA_FILE  path of the encrypted data file (default: data/vermoegen.dat)
 //   FINANZEN_PORT       port, 0 = any free port (default: 4317)
+//   FINANZEN_LOCK_TIMEOUT_MS  auto-lock after this many ms without requests (default: 30 minutes)
 // Flag --open opens the default browser once the server listens (used by start.bat).
 const dataFile = resolve(process.env.FINANZEN_DATA_FILE ?? "data/vermoegen.dat");
 const port = Number(process.env.FINANZEN_PORT ?? 4317);
 const uiDir = resolve(import.meta.dirname, "../../dist/ui");
 
-const server = createApp({ dataFile, uiDir });
+const lockTimeoutMs = process.env.FINANZEN_LOCK_TIMEOUT_MS ? Number(process.env.FINANZEN_LOCK_TIMEOUT_MS) : undefined;
+
+const server = createApp({ dataFile, uiDir, lockTimeoutMs });
 
 // Bind to the loopback interface only: never reachable from other machines.
 server.listen(port, "127.0.0.1", () => {

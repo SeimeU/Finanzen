@@ -10,7 +10,14 @@ import * as store from "../store";
  * run the core command → on success save the document → reply.
  * Also serves the built UI (dist/ui) for every non-/api path.
  */
-export type AppConfig = { dataFile: string; uiDir: string };
+export type AppConfig = {
+  dataFile: string;
+  uiDir: string;
+  /** Discard the decrypted document after this long without requests (default 30 minutes). */
+  lockTimeoutMs?: number;
+};
+
+export const DEFAULT_LOCK_TIMEOUT_MS = 30 * 60 * 1000;
 
 type Session = { password: string; document: WealthDocument };
 type Reply = { status: number; body: unknown };
@@ -19,6 +26,16 @@ type Handler = (body: Record<string, unknown>) => Promise<Reply>;
 export function createApp(config: AppConfig): Server {
   // The decrypted document lives only here, and only while unlocked.
   let session: Session | null = null;
+  const lockTimeoutMs = config.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
+  let lockTimer: NodeJS.Timeout | undefined;
+
+  // Session lock: any request except the status poll counts as use and restarts the countdown.
+  function registerActivity() {
+    clearTimeout(lockTimer);
+    if (!session) return;
+    lockTimer = setTimeout(() => (session = null), lockTimeoutMs);
+    lockTimer.unref();
+  }
 
   const routes: Record<string, Handler> = {
     "GET /api/status": async () =>
@@ -69,6 +86,7 @@ export function createApp(config: AppConfig): Server {
         const reply = handler
           ? await handler(await readJson(request))
           : error(404, "not-found", "Unbekannter Endpunkt.");
+        if (`${request.method} ${path}` !== "GET /api/status") registerActivity();
         sendJson(response, reply);
       } else {
         await serveStatic(config.uiDir, path, response);
