@@ -7,7 +7,7 @@ import { ASSET_CLASS_LABELS, formatClassification, LIQUIDITY_LABELS } from "../l
  * Settings view for Institute → Konten → Positionen. Every form submits one core
  * command; the server saves immediately and replies with the updated tree.
  */
-export function AccountsView() {
+export function AccountsView({ onOpenAccount }: { onOpenAccount: (accountId: string) => void }) {
   const [structure, setStructure] = useState<InstitutionView[] | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function AccountsView() {
       <h1>Institute, Konten und Positionen</h1>
       {structure.length === 0 && <p className="empty">Noch keine Institute angelegt.</p>}
       {structure.map((institution) => (
-        <InstitutionSection key={institution.id} institution={institution} onChange={apply} />
+        <InstitutionSection key={institution.id} institution={institution} onChange={apply} onOpenAccount={onOpenAccount} />
       ))}
       <NameForm
         label="Institut anlegen"
@@ -36,7 +36,15 @@ export function AccountsView() {
 
 type OnChange = (r: Structure) => void;
 
-function InstitutionSection({ institution, onChange }: { institution: InstitutionView; onChange: OnChange }) {
+function InstitutionSection({
+  institution,
+  onChange,
+  onOpenAccount,
+}: {
+  institution: InstitutionView;
+  onChange: OnChange;
+  onOpenAccount: (accountId: string) => void;
+}) {
   const headingId = useId();
   const [editing, setEditing] = useState(false);
   return (
@@ -61,7 +69,7 @@ function InstitutionSection({ institution, onChange }: { institution: Institutio
         />
       )}
       {institution.accounts.map((account) => (
-        <AccountSection key={account.id} account={account} onChange={onChange} />
+        <AccountSection key={account.id} account={account} onChange={onChange} onOpen={() => onOpenAccount(account.id)} />
       ))}
       <AccountForm
         label="Konto anlegen"
@@ -72,7 +80,7 @@ function InstitutionSection({ institution, onChange }: { institution: Institutio
   );
 }
 
-function AccountSection({ account, onChange }: { account: AccountView; onChange: OnChange }) {
+function AccountSection({ account, onChange, onOpen }: { account: AccountView; onChange: OnChange; onOpen: () => void }) {
   const headingId = useId();
   const [editing, setEditing] = useState(false);
   return (
@@ -80,6 +88,9 @@ function AccountSection({ account, onChange }: { account: AccountView; onChange:
       <header className="row">
         <h3 id={headingId}>{account.name}</h3>
         {account.isDebt && <span className="badge">Schulden</span>}
+        <button type="button" className="secondary" onClick={onOpen}>
+          Konto ansehen
+        </button>
         <button type="button" className="secondary" onClick={() => setEditing(!editing)}>
           Konto bearbeiten
         </button>

@@ -17,3 +17,4 @@ export {
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
+export * from "./accountDetail";

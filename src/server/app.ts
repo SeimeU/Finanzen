@@ -3,6 +3,8 @@ import { mkdir, readFile, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import {
+  accountDetail,
+  contributionSplit,
   createAccount,
   createEmptyDocument,
   createHolding,
@@ -216,6 +218,14 @@ export function createApp(initialConfig: AppConfig): Server {
 
     // Monatsstand (Snapshots). `today` is the server's local date, passed into the core.
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
+    // Konto detail and Einzahlung vs market change (ticket 11).
+    "POST /api/accounts/detail": async ({ id }) => {
+      if (!session) return locked();
+      const detail = accountDetail(session.document, String(id));
+      return detail ? ok({ detail }) : error(404, "account-not-found", "Das Konto gibt es nicht.");
+    },
+    "GET /api/contributions": async () =>
+      session ? ok({ months: contributionSplit(session.document) }) : locked(),
     "POST /api/snapshots/form": async ({ month }) => {
       if (!session) return locked();
       if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {

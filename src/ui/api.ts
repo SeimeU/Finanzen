@@ -1,6 +1,8 @@
 // The only place the UI talks to the server. Same origin, JSON in and out.
 import type {
+  AccountDetail,
   AccountInput,
+  ContributionMonth,
   Classification,
   HoldingInput,
   InstitutionView,
@@ -72,4 +74,10 @@ export const backupsApi = {
   restore: (id: string) => call<{ backups: Backup[] }>("POST", "/api/backups/restore", { id }),
   exportSuggestion: () => call<{ suggestedPath: string }>("GET", "/api/export"),
   exportUnencrypted: (path: string) => call<{ path: string }>("POST", "/api/export", { path }),
+};
+
+/** Konto detail and the Einzahlung vs market change split (ticket 11). */
+export const accountDetailApi = {
+  detail: (id: string) => call<{ detail: AccountDetail }>("POST", "/api/accounts/detail", { id }),
+  contributions: () => call<{ months: ContributionMonth[] }>("GET", "/api/contributions"),
 };

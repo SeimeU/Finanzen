@@ -3,12 +3,13 @@ import type { NetWorthMonth } from "../../core";
 import { snapshotsApi } from "../api";
 import { formatEur, formatMonth } from "../format";
 import { Figure } from "./SnapshotView";
+import { AccountLinks, ContributionSection } from "./StartSections";
 
 // ECharts is large: load it in its own chunk, only when there is a chart to show.
 const NetWorthChart = lazy(() => import("../NetWorthChart").then((m) => ({ default: m.NetWorthChart })));
 
 /** Start screen: current Net worth and its history. Navigation is in UnlockedApp. */
-export function StartView() {
+export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string) => void }) {
   const [series, setSeries] = useState<NetWorthMonth[] | null>(null);
 
   useEffect(() => {
@@ -27,8 +28,10 @@ export function StartView() {
           <Suspense fallback={null}>
             <NetWorthChart series={series!} />
           </Suspense>
+          <ContributionSection />
         </>
       )}
+      <AccountLinks onOpenAccount={onOpenAccount} />
     </main>
   );
 }

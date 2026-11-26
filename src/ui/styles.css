@@ -235,3 +235,30 @@ section {
   color: var(--accent);
   border: 1px solid var(--accent);
 }
+
+/* Tables (Konto detail, Einzahlung vs Marktveränderung). */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.table th,
+.table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e6e9ee;
+  text-align: left;
+}
+
+.table .amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
