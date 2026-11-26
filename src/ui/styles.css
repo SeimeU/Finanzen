@@ -1,0 +1,76 @@
+/* System fonts only: nothing is loaded from the network. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5c6675;
+  --accent: #1f5fbf;
+  --danger: #b3261e;
+  --warning-bg: #fff4e0;
+  font-family: system-ui, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.card {
+  max-width: 26rem;
+  margin: 10vh auto;
+  padding: 2rem;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+}
+
+.page {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+input {
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid #c5cbd3;
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 4px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.warning {
+  padding: 0.75rem;
+  background: var(--warning-bg);
+  border-radius: 4px;
+}
+
+[role="alert"] {
+  margin: 0;
+  color: var(--danger);
+}
+
+.empty {
+  color: var(--muted);
+}
