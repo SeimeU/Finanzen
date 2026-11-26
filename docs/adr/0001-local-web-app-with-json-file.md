@@ -1,0 +1,3 @@
+# Local web app with a single data file, fully offline
+
+The app runs as a local web app on the owner's Windows machine, started with one command and used in the browser at `localhost`. All data lives in one JSON document stored in a single file, and the app never makes a network request. We chose this over a desktop app (e.g. Tauri), which is more polished but more effort to build and change, and over a single HTML file, which makes saving to a chosen file clunky. One file keeps the data portable and easy to back up; the cost is that it's held in memory and rewritten whole on save, which is fine at personal-finance volumes. The file is encrypted on disk, see ADR 0002.
