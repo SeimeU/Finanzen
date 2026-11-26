@@ -1,5 +1,15 @@
 // The only place the UI talks to the server. Same origin, JSON in and out.
-import type { AccountInput, Classification, HoldingInput, InstitutionView } from "../core";
+import type {
+  AccountInput,
+  Classification,
+  FilePreview,
+  HoldingInput,
+  ImportedFile,
+  ImportRecord,
+  InstitutionView,
+  Transaction,
+  TransactionFilter,
+} from "../core";
 
 export type AppState = "new" | "locked" | "unlocked";
 
@@ -54,3 +64,25 @@ export const backupsApi = {
   exportSuggestion: () => call<{ suggestedPath: string }>("GET", "/api/export"),
   exportUnencrypted: (path: string) => call<{ path: string }>("POST", "/api/export", { path }),
 };
+
+/** A dropped CSV file on its way to the server. */
+export type UploadFile = { name: string; contentBase64: string };
+
+// CSV import and the Transaction list (Umsätze).
+export const importApi = {
+  preview: (files: (UploadFile & { accountId?: string | null })[]) =>
+    call<{ files: FilePreview[] }>("POST", "/api/import/preview", { files }),
+  confirm: (files: (UploadFile & { accountId: string })[]) =>
+    call<{ files: ImportedFile[]; imports: ImportRecord[] }>("POST", "/api/import/confirm", { files }),
+  undo: (importId: string) => call<{ imports: ImportRecord[] }>("POST", "/api/import/undo", { importId }),
+  imports: () => call<{ imports: ImportRecord[] }>("GET", "/api/imports"),
+  searchTransactions: (filter: TransactionFilter) =>
+    call<{ transactions: Transaction[] }>("POST", "/api/transactions/search", filter),
+};
+
+export async function toUploadFile(file: File): Promise<UploadFile> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { name: file.name, contentBase64: btoa(binary) };
+}

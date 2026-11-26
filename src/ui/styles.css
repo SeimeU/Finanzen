@@ -172,3 +172,42 @@ section {
   background: var(--surface);
   border-radius: 4px;
 }
+
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 2px dashed #c5cbd3;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.dropzone.over {
+  border-color: var(--accent);
+}
+
+.file-input {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+table.transactions {
+  width: 100%;
+  margin-top: 1.5rem;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+table.transactions th,
+table.transactions td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #e3e6ea;
+}
+
+table.transactions .amount {
+  text-align: right;
+  white-space: nowrap;
+}

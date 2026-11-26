@@ -3,6 +3,11 @@ import { mkdir, readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { dirname, extname, isAbsolute, join, normalize, sep } from "node:path";
 import {
+  confirmImport,
+  listImports,
+  previewImport,
+  searchTransactions,
+  undoImport,
   createAccount,
   createEmptyDocument,
   createHolding,
@@ -148,6 +153,36 @@ export function createApp(config: AppConfig): Server {
     "POST /api/accounts/update": command(updateAccount),
     "POST /api/holdings/create": command(createHolding),
     "POST /api/holdings/update": command(updateHolding),
+
+    // CSV import. Files travel as base64 in JSON: { name, contentBase64 }.
+    "POST /api/import/preview": async ({ files }) => {
+      if (!session) return locked();
+      const result = previewImport(session.document, { files: decodeFiles(files) });
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      return ok({ files: result.files });
+    },
+    "POST /api/import/confirm": async ({ files }) => {
+      if (!session) return locked();
+      const result = confirmImport(session.document, {
+        importedAt: new Date().toISOString(),
+        files: decodeFiles(files) as ({ name: string; bytes: Uint8Array; accountId: string })[],
+      });
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      await store.save(config.dataFile, session.password, result.document);
+      session.document = result.document;
+      return ok({ files: result.files, imports: listImports(result.document) });
+    },
+    "POST /api/import/undo": async (body) => {
+      if (!session) return locked();
+      const result = undoImport(session.document, body as { importId: string });
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      await store.save(config.dataFile, session.password, result.document);
+      session.document = result.document;
+      return ok({ imports: listImports(result.document) });
+    },
+    "GET /api/imports": async () => (session ? ok({ imports: listImports(session.document) }) : locked()),
+    "POST /api/transactions/search": async (filter) =>
+      session ? ok({ transactions: searchTransactions(session.document, filter) }) : locked(),
   };
 
   return createServer(async (request, response) => {
@@ -167,6 +202,16 @@ export function createApp(config: AppConfig): Server {
       sendJson(response, error(500, "internal", "Interner Fehler."));
     }
   });
+}
+
+/** `[{ name, contentBase64, ...rest }]` from the UI → `[{ name, bytes, ...rest }]` for the core. */
+function decodeFiles(raw: unknown): { name: string; bytes: Uint8Array; accountId?: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(({ contentBase64, ...rest }) => ({
+    ...rest,
+    name: String(rest.name ?? ""),
+    bytes: new Uint8Array(Buffer.from(String(contentBase64 ?? ""), "base64")),
+  }));
 }
 
 function locked(): Reply {

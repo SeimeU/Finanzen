@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { AccountsView } from "./views/AccountsView";
+import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
 import { StartView } from "./views/StartView";
+import { TransactionsView } from "./views/TransactionsView";
 
 /**
  * Navigation between the unlocked views. A simple state-based switch: to add a
@@ -9,6 +11,8 @@ import { StartView } from "./views/StartView";
  */
 const VIEWS = {
   start: "Übersicht",
+  transactions: "Umsätze",
+  import: "Import",
   accounts: "Konten verwalten",
   settings: "Einstellungen",
 } as const;
@@ -32,6 +36,8 @@ export function UnlockedApp() {
         ))}
       </nav>
       {view === "start" && <StartView />}
+      {view === "transactions" && <TransactionsView />}
+      {view === "import" && <ImportView />}
       {view === "accounts" && <AccountsView />}
       {view === "settings" && <SettingsView onBack={() => setView("start")} />}
     </>
