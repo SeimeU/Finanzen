@@ -5,7 +5,8 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(1);
+    expect(CURRENT_SCHEMA_VERSION).toBe(2);
+    expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [] });
   });
 
   it("loading a current document returns it unchanged", () => {
@@ -16,7 +17,7 @@ describe("data document", () => {
 
   it("loading a document of an older schema version migrates it to the current version", () => {
     const result = loadDocument({ schemaVersion: 0 });
-    expect(result).toEqual({ ok: true, document: { schemaVersion: 1 } });
+    expect(result).toEqual({ ok: true, document: createEmptyDocument() });
   });
 
   it("rejects a document from a newer app version", () => {

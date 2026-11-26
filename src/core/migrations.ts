@@ -11,6 +11,8 @@ type RawDocument = { schemaVersion: number } & Record<string, unknown>;
 const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
   // 0 → 1: no-op, proves the mechanism (version 0 was the pre-release shape).
   0: (document) => ({ ...document, schemaVersion: 1 }),
+  // 1 → 2: Institutions, Accounts and Holdings.
+  1: (document) => ({ ...document, schemaVersion: 2, institutions: [], accounts: [], holdings: [] }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */
