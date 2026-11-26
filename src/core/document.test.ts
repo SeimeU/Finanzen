@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+    expect(CURRENT_SCHEMA_VERSION).toBe(5);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -18,6 +18,14 @@ describe("data document", () => {
   it("loading a document of an older schema version migrates it to the current version", () => {
     const result = loadDocument({ schemaVersion: 0 });
     expect(result).toEqual({ ok: true, document: createEmptyDocument() });
+  });
+
+  it("a version 4 document gets the default Categories and its Transactions no manual Category", () => {
+    const v4 = { ...createEmptyDocument(), schemaVersion: 4, categories: undefined, transactions: [{ id: "t1", purpose: "Billa" }] };
+    const result = loadDocument(v4);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.categories).toEqual(createEmptyDocument().categories);
+    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null }]);
   });
 
   it("rejects a document from a newer app version", () => {

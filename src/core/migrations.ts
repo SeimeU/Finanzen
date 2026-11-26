@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, type WealthDocument } from "./document";
+import { CURRENT_SCHEMA_VERSION, defaultCategories, type WealthDocument } from "./document";
 import { fail, type Result } from "./result";
 
 type RawDocument = { schemaVersion: number } & Record<string, unknown>;
@@ -17,6 +17,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
   2: (document) => ({ ...document, schemaVersion: 3, snapshots: [] }),
   // 3 → 4: imported Transactions and the imports they came from.
   3: (document) => ({ ...document, schemaVersion: 4, transactions: [], imports: [] }),
+  // 4 → 5: Categories (default list) and the manual Category on each Transaction.
+  4: (document) => ({
+    ...document,
+    schemaVersion: 5,
+    categories: defaultCategories(),
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, manualCategoryId: null })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

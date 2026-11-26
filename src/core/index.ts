@@ -28,4 +28,12 @@ export {
   type ImportFileInput,
 } from "./import/pipeline";
 export type { ImportProfile } from "./import/profile";
-export { searchTransactions, type TransactionFilter } from "./transactions";
+export { searchTransactions, uncategorizedTransactions, type TransactionFilter } from "./transactions";
+export {
+  setTransactionCategory,
+  type CategorySource,
+  type ClassifiedTransaction,
+  type TransactionClassification,
+} from "./classification";
+export { CATEGORY_KINDS, type Category, type CategoryKind } from "./document";
+export * from "./categories";
