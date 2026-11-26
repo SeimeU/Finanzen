@@ -111,6 +111,8 @@ function parse(text: string): ParseResult {
         taxCents,
         securityName: get("name") || null,
         isin: get("symbol") || null,
+        bookingText: null,
+        valueDate: null,
       },
     });
   }

@@ -6,7 +6,8 @@ import { save } from "../src/store";
 import { expect, test } from "./fixtures";
 
 const FIXTURE = join(import.meta.dirname, "..", "src", "core", "import", "fixtures", "trade-republic-basic.csv");
-const CASH = { assetClass: "cash", liquidity: "available", maturityDate: null } as const;
+const ELBA_FIXTURE = join(import.meta.dirname, "..", "src", "core", "import", "fixtures", "elba-basic.csv");
+const CASH ={ assetClass: "cash", liquidity: "available", maturityDate: null } as const;
 
 /** A data file with a Trade Republic Institution holding one Account, so it is suggested. */
 async function withTradeRepublicAccount(dataFile: string) {
@@ -24,18 +25,17 @@ async function unlock(page: Page, url: string) {
   await page.getByRole("button", { name: "Entsperren" }).click();
 }
 
-/** Drops a file onto the drop zone the way a browser does: a drop event carrying a DataTransfer. */
-async function dropFile(page: Page, name: string, content: string) {
-  const dataTransfer = await page.evaluateHandle(
-    ({ name, content }) => {
-      const transfer = new DataTransfer();
-      transfer.items.add(new File([content], name, { type: "text/csv" }));
-      return transfer;
-    },
-    { name, content },
-  );
+/** Drops files onto the drop zone the way a browser does: a drop event carrying a DataTransfer. */
+async function dropFiles(page: Page, files: { name: string; content: string }[]) {
+  const dataTransfer = await page.evaluateHandle((files) => {
+    const transfer = new DataTransfer();
+    for (const { name, content } of files) transfer.items.add(new File([content], name, { type: "text/csv" }));
+    return transfer;
+  }, files);
   await page.getByRole("region", { name: "CSV-Dateien hier ablegen" }).dispatchEvent("drop", { dataTransfer });
 }
+
+const dropFile = (page: Page, name: string, content: string) => dropFiles(page, [{ name, content }]);
 
 test("drop a Trade Republic export, confirm, see the Umsätze; a re-drop is all duplicates; undo removes them", async ({
   page,
@@ -84,6 +84,48 @@ test("drop a Trade Republic export, confirm, see the Umsätze; a re-drop is all 
   await expect(imports).toHaveCount(0);
   await page.getByRole("button", { name: "Umsätze", exact: true }).click();
   await expect(page.getByText("Keine Umsätze gefunden.")).toBeVisible();
+});
+
+test("drop a Trade Republic and an ELBA file together, confirm both and see their Umsätze", async ({ page, app }) => {
+  let document: WealthDocument = createEmptyDocument();
+  for (const [institution, account] of [
+    ["Trade Republic", "Verrechnungskonto"],
+    ["Raiffeisenbank", "Girokonto"],
+  ] as const) {
+    const created = createInstitution(document, { name: institution });
+    if (!created.ok) throw new Error();
+    const added = createAccount(created.document, { institutionId: created.id, name: account, defaultClassification: CASH });
+    if (!added.ok) throw new Error();
+    document = added.document;
+  }
+  await save(app.dataFile, "geheim123", document);
+  await unlock(page, app.url);
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+
+  await dropFiles(page, [
+    { name: "trade-republic.csv", content: await readFile(FIXTURE, "utf8") },
+    { name: "elba-giro.csv", content: await readFile(ELBA_FIXTURE, "utf8") },
+  ]);
+  const tr = page.getByRole("region", { name: "trade-republic.csv" });
+  const elba = page.getByRole("region", { name: "elba-giro.csv" });
+  await expect(tr).toContainText("Format: Trade Republic");
+  await expect(tr.getByLabel("Konto").locator("option:checked")).toHaveText("Trade Republic – Verrechnungskonto");
+  await expect(elba).toContainText("Format: Raiffeisen ELBA");
+  await expect(elba).toContainText("01.10.2026 – 31.10.2026");
+  await expect(elba).toContainText("5 neu / 0 Duplikate");
+  await expect(elba.getByLabel("Konto").locator("option:checked")).toHaveText("Raiffeisenbank – Girokonto");
+  await page.getByRole("button", { name: "Importieren" }).click();
+  await expect(page.getByRole("status")).toContainText("11 Umsätze importiert.");
+
+  await page.getByRole("button", { name: "Umsätze", exact: true }).click();
+  const rows = page.getByRole("table", { name: "Umsätze" }).getByRole("row");
+  await expect(rows).toHaveCount(12); // header + 6 + 5
+  await page.getByLabel("Suche").fill("wien energie");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(1)).toContainText("15.10.2026");
+  await expect(rows.nth(1)).toContainText("Raiffeisenbank – Girokonto");
+  await expect(rows.nth(1)).toContainText("Strom Oktober");
+  await expect(rows.nth(1)).toContainText("-84,10 €");
 });
 
 test("an unreadable file is rejected with a German message and nothing is imported", async ({ page, app }) => {

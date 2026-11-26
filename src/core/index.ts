@@ -17,7 +17,7 @@ export {
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
-export { type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
+export { type ImportAccountChoice, type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
 export {
   confirmImport,
   listImports,

@@ -13,7 +13,11 @@ export type WealthDocument = {
   transactions: Transaction[];
   /** One entry per confirmed file import; undoing it removes exactly its Transactions. */
   imports: ImportRecord[];
+  /** The Account last confirmed for each import file name; suggested when that name is dropped again. */
+  importAccountChoices: ImportAccountChoice[];
 };
+
+export type ImportAccountChoice = { fileName: string; accountId: string };
 
 export type Institution = { id: string; name: string };
 
@@ -105,6 +109,10 @@ export type TransactionOrigin = {
   taxCents: number | null;
   securityName: string | null;
   isin: string | null;
+  /** ELBA: the raw Buchungstext the other fields were split from. */
+  bookingText: string | null;
+  /** ELBA: the Valutadatum, "YYYY-MM-DD". */
+  valueDate: string | null;
 };
 
 export type ImportRecord = {
@@ -119,7 +127,7 @@ export type ImportRecord = {
   duplicateCount: number;
 };
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -130,5 +138,6 @@ export function createEmptyDocument(): WealthDocument {
     snapshots: [],
     transactions: [],
     imports: [],
+    importAccountChoices: [],
   };
 }

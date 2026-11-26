@@ -105,6 +105,8 @@ describe("confirming an import", () => {
         taxCents: null,
         securityName: null,
         isin: null,
+        bookingText: null,
+        valueDate: null,
       },
     });
     expect(found.find((t) => t.origin.type === "BUY")!.origin).toMatchObject({
@@ -131,11 +133,11 @@ describe("confirming an import", () => {
     ]);
   });
 
-  it("changes nothing but the Transactions and imports", () => {
+  it("changes nothing but the Transactions, imports and the remembered Account per file name", () => {
     const { document, accountId } = withTradeRepublicAccount();
     const { document: next } = importFile(document, "tr.csv", fixture("trade-republic-basic.csv"), accountId);
-    const { transactions: _t, imports: _i, ...rest } = next;
-    const { transactions: _t0, imports: _i0, ...before } = document;
+    const { transactions: _t, imports: _i, importAccountChoices: _c, ...rest } = next;
+    const { transactions: _t0, imports: _i0, importAccountChoices: _c0, ...before } = document;
     expect(rest).toEqual(before);
   });
 
