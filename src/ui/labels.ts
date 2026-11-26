@@ -25,3 +25,8 @@ export function formatClassification(c: Classification): string {
       : LIQUIDITY_LABELS[c.liquidity];
   return `${ASSET_CLASS_LABELS[c.assetClass]}, ${liquidity}`;
 }
+
+/** Every Account as "Institut – Konto", for Konto selects. */
+export function accountOptions(structure: import("../core").InstitutionView[]): { id: string; label: string }[] {
+  return structure.flatMap((i) => i.accounts.map((a) => ({ id: a.id, label: `${i.name} – ${a.name}` })));
+}

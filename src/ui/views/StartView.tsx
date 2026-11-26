@@ -4,12 +4,13 @@ import { notesApi, snapshotsApi } from "../api";
 import { formatEur, formatMonth } from "../format";
 import { MonthNotesSection } from "./MonthNotesSection";
 import { Figure } from "./SnapshotView";
+import { AccountLinks, ContributionSection } from "./StartSections";
 
 // ECharts is large: load it in its own chunk, only when there is a chart to show.
 const NetWorthChart = lazy(() => import("../NetWorthChart").then((m) => ({ default: m.NetWorthChart })));
 
 /** Start screen: current Net worth and its history. Navigation is in UnlockedApp. */
-export function StartView() {
+export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string) => void }) {
   const [series, setSeries] = useState<NetWorthMonth[] | null>(null);
   const [notes, setNotes] = useState<MonthNotes[]>([]);
   /** Month clicked on the chart: its Note and Events open below it. */
@@ -37,8 +38,10 @@ export function StartView() {
           ) : (
             <p className="empty">Einen Monat im Diagramm anklicken, um Notiz und Ereignisse zu erfassen.</p>
           )}
+          <ContributionSection />
         </>
       )}
+      <AccountLinks onOpenAccount={onOpenAccount} />
     </main>
   );
 }

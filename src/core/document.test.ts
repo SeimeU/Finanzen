@@ -5,8 +5,8 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(3);
-    expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [] });
+    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+    expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
   it("loading a current document returns it unchanged", () => {
