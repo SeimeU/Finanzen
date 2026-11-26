@@ -2,7 +2,7 @@ import { constants, existsSync } from "node:fs";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { load, save } from "./encryptedFileStore";
-import { listBackupFiles, relocatedBackupFile } from "./backupFiles";
+import { listBackupFiles, relocatedBackupFile } from "./backupLocations";
 
 /** A file already exists where the data file (or one of its backups) would be moved to. Nothing was moved. */
 export class TargetExistsError extends Error {
