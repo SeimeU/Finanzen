@@ -29,3 +29,14 @@ export const api = {
   unlock: (password: string) => call<{ state: AppState }>("POST", "/api/unlock", { password }),
   lock: () => call<{ state: AppState }>("POST", "/api/lock"),
 };
+
+/** One backup of the data file; `createdAt` is an ISO 8601 UTC instant. */
+export type Backup = { id: string; createdAt: string };
+
+// Kept apart from `api` so tickets adding endpoints in parallel don't collide.
+export const backupsApi = {
+  list: () => call<{ backups: Backup[] }>("GET", "/api/backups"),
+  restore: (id: string) => call<{ backups: Backup[] }>("POST", "/api/backups/restore", { id }),
+  exportSuggestion: () => call<{ suggestedPath: string }>("GET", "/api/export"),
+  exportUnencrypted: (path: string) => call<{ path: string }>("POST", "/api/export", { path }),
+};
