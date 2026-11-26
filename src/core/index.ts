@@ -11,9 +11,11 @@ export {
   type Holding,
   type Institution,
   type HoldingValue,
+  type MonthEvent,
   type Liquidity,
   type Snapshot,
   type YearMonth,
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
+export * from "./notes";

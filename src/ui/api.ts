@@ -4,6 +4,7 @@ import type {
   Classification,
   HoldingInput,
   InstitutionView,
+  MonthNotes,
   NetWorthMonth,
   SnapshotForm,
   SnapshotInput,
@@ -72,4 +73,15 @@ export const backupsApi = {
   restore: (id: string) => call<{ backups: Backup[] }>("POST", "/api/backups/restore", { id }),
   exportSuggestion: () => call<{ suggestedPath: string }>("GET", "/api/export"),
   exportUnencrypted: (path: string) => call<{ path: string }>("POST", "/api/export", { path }),
+};
+
+/** Notes and Events. Every call replies with the whole chronological list. Amounts in cents. */
+export const notesApi = {
+  list: () => call<{ notes: MonthNotes[] }>("GET", "/api/notes"),
+  setNote: (input: { month: string; note: string }) => call<{ notes: MonthNotes[] }>("POST", "/api/notes/set", input),
+  addEvent: (input: { month: string; label: string; amount: number }) =>
+    call<{ notes: MonthNotes[]; id: string }>("POST", "/api/events/add", input),
+  updateEvent: (input: { id: string; label: string; amount: number }) =>
+    call<{ notes: MonthNotes[] }>("POST", "/api/events/update", input),
+  deleteEvent: (input: { id: string }) => call<{ notes: MonthNotes[] }>("POST", "/api/events/delete", input),
 };

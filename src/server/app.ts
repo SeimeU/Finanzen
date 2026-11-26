@@ -19,6 +19,7 @@ import {
   type SnapshotInput,
   type WealthDocument,
 } from "../core";
+import { addEvent, deleteEvent, notesAndEvents, setNote, updateEvent } from "../core";
 import * as store from "../store";
 import { writeSettings } from "./settings";
 
@@ -71,6 +72,19 @@ export function createApp(initialConfig: AppConfig): Server {
       await store.save(config.dataFile, session.password, document);
       session.document = document;
       return ok({ ...rest, structure: listStructure(document) });
+    };
+  }
+
+  /** Like `command`, but replies with the Notes and Events list instead of the structure. */
+  function notesCommand(cmd: (document: WealthDocument, body: Record<string, unknown>) => Result<{ document: WealthDocument }>): Handler {
+    return async (body) => {
+      if (!session) return locked();
+      const result = cmd(session.document, body);
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      const { ok: _, document, ...rest } = result;
+      await store.save(config.dataFile, session.password, document);
+      session.document = document;
+      return ok({ ...rest, notes: notesAndEvents(document) });
     };
   }
 
@@ -231,6 +245,15 @@ export function createApp(initialConfig: AppConfig): Server {
       session.document = result.document;
       return ok({ form: snapshotForm(result.document, String(body.month)) });
     },
+
+    // Notes and Events. Every command replies with the whole chronological list as `notes`.
+    "GET /api/notes": async () => (session ? ok({ notes: notesAndEvents(session.document) }) : locked()),
+    "POST /api/notes/set": notesCommand((d, body) => setNote(d, { ...(body as { month: string; note: string }), today: localToday() })),
+    "POST /api/events/add": notesCommand((d, body) =>
+      addEvent(d, { ...(body as { month: string; label: string; amount: number }), today: localToday() }),
+    ),
+    "POST /api/events/update": notesCommand((d, body) => updateEvent(d, body as { id: string; label: string; amount: number })),
+    "POST /api/events/delete": notesCommand((d, body) => deleteEvent(d, body as { id: string })),
   };
 
   return createServer(async (request, response) => {
