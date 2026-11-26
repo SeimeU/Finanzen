@@ -66,7 +66,14 @@ export type YearMonth = string;
 export type Snapshot = {
   month: YearMonth;
   holdingValues: HoldingValue[];
+  /** Free text about the month; absent when there is none. */
+  note?: string;
+  /** Absent or empty when the month has none. */
+  events?: MonthEvent[];
 };
+
+/** An Event: a notable happening in a month. Amount in cents, may be negative. */
+export type MonthEvent = { id: string; label: string; amount: number };
 
 /** Amounts in integer cents. A debt's value is entered positive (amount owed). */
 export type HoldingValue = {

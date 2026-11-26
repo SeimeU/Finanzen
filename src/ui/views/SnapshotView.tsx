@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import type { SnapshotForm, SnapshotFormHolding } from "../../core";
 import { ApiError, snapshotsApi } from "../api";
 import { formatEur, formatEurInput, formatMonth, parseEur } from "../format";
+import { MonthNotesSection } from "./MonthNotesSection";
 
 /** What the owner typed for one Holding. `touched` = changed in this form since it loaded. */
 type Entry = { value: string; contribution: string; touched: boolean };
@@ -148,6 +149,7 @@ export function SnapshotView() {
           Speichern
         </button>
       </form>
+      {/^\d{4}-\d{2}$/.test(month) && <MonthNotesSection month={month} />}
     </main>
   );
 }

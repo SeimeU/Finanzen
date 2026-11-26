@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { AccountDetailView } from "./views/AccountDetailView";
 import { AccountsView } from "./views/AccountsView";
+import { NotesView } from "./views/NotesView";
 import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
 import { SnapshotView } from "./views/SnapshotView";
@@ -14,6 +16,7 @@ import { TransactionsView } from "./views/TransactionsView";
 const VIEWS = {
   start: "Übersicht",
   snapshot: "Monatsstand",
+  notes: "Notizen & Ereignisse",
   transactions: "Umsätze",
   import: "Import",
   accounts: "Konten verwalten",
@@ -28,6 +31,8 @@ const LOCK_POLL_MS = 3000;
 /** Also holds the Sperren button and the auto-lock watch: once the server has locked, `onLocked` returns to the unlock screen. */
 export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
   const [view, setView] = useState<ViewKey>("start");
+  // Konto detail opens over the current view (start screen or Konten verwalten); Zurück returns to it.
+  const [openAccountId, setOpenAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(async () => {
@@ -49,8 +54,11 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
           <button
             key={key}
             type="button"
-            aria-current={view === key ? "page" : undefined}
-            onClick={() => setView(key)}
+            aria-current={view === key && !openAccountId ? "page" : undefined}
+            onClick={() => {
+              setView(key);
+              setOpenAccountId(null);
+            }}
           >
             {VIEWS[key]}
           </button>
@@ -59,12 +67,19 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
           Sperren
         </button>
       </nav>
-      {view === "start" && <StartView />}
-      {view === "snapshot" && <SnapshotView />}
-      {view === "transactions" && <TransactionsView />}
-      {view === "import" && <ImportView />}
-      {view === "accounts" && <AccountsView />}
-      {view === "settings" && <SettingsView />}
+      {openAccountId ? (
+        <AccountDetailView accountId={openAccountId} onBack={() => setOpenAccountId(null)} />
+      ) : (
+        <>
+          {view === "start" && <StartView onOpenAccount={setOpenAccountId} />}
+          {view === "snapshot" && <SnapshotView />}
+          {view === "notes" && <NotesView />}
+          {view === "transactions" && <TransactionsView />}
+          {view === "import" && <ImportView />}
+          {view === "accounts" && <AccountsView onOpenAccount={setOpenAccountId} />}
+          {view === "settings" && <SettingsView />}
+        </>
+      )}
     </>
   );
 }

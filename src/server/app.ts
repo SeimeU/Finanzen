@@ -3,6 +3,8 @@ import { mkdir, readFile, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import {
+  accountDetail,
+  contributionSplit,
   confirmImport,
   listImports,
   previewImport,
@@ -27,6 +29,7 @@ import {
   type SnapshotInput,
   type WealthDocument,
 } from "../core";
+import { addEvent, deleteEvent, notesAndEvents, setNote, updateEvent } from "../core";
 import * as store from "../store";
 import { writeSettings } from "./settings";
 
@@ -79,6 +82,19 @@ export function createApp(initialConfig: AppConfig): Server {
       await store.save(config.dataFile, session.password, document);
       session.document = document;
       return ok({ ...rest, structure: listStructure(document) });
+    };
+  }
+
+  /** Like `command`, but replies with the Notes and Events list instead of the structure. */
+  function notesCommand(cmd: (document: WealthDocument, body: Record<string, unknown>) => Result<{ document: WealthDocument }>): Handler {
+    return async (body) => {
+      if (!session) return locked();
+      const result = cmd(session.document, body);
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      const { ok: _, document, ...rest } = result;
+      await store.save(config.dataFile, session.password, document);
+      session.document = document;
+      return ok({ ...rest, notes: notesAndEvents(document) });
     };
   }
 
@@ -224,6 +240,14 @@ export function createApp(initialConfig: AppConfig): Server {
 
     // Monatsstand (Snapshots). `today` is the server's local date, passed into the core.
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
+    // Konto detail and Einzahlung vs market change (ticket 11).
+    "POST /api/accounts/detail": async ({ id }) => {
+      if (!session) return locked();
+      const detail = accountDetail(session.document, String(id));
+      return detail ? ok({ detail }) : error(404, "account-not-found", "Das Konto gibt es nicht.");
+    },
+    "GET /api/contributions": async () =>
+      session ? ok({ months: contributionSplit(session.document) }) : locked(),
     "POST /api/snapshots/form": async ({ month }) => {
       if (!session) return locked();
       if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
@@ -240,6 +264,14 @@ export function createApp(initialConfig: AppConfig): Server {
       return ok({ form: snapshotForm(result.document, String(body.month)) });
     },
 
+    // Notes and Events. Every command replies with the whole chronological list as `notes`.
+    "GET /api/notes": async () => (session ? ok({ notes: notesAndEvents(session.document) }) : locked()),
+    "POST /api/notes/set": notesCommand((d, body) => setNote(d, { ...(body as { month: string; note: string }), today: localToday() })),
+    "POST /api/events/add": notesCommand((d, body) =>
+      addEvent(d, { ...(body as { month: string; label: string; amount: number }), today: localToday() }),
+    ),
+    "POST /api/events/update": notesCommand((d, body) => updateEvent(d, body as { id: string; label: string; amount: number })),
+    "POST /api/events/delete": notesCommand((d, body) => deleteEvent(d, body as { id: string })),
     // CSV import. Files travel as base64 in JSON: { name, contentBase64 }.
     "POST /api/import/preview": async ({ files }) => {
       if (!session) return locked();

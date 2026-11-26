@@ -294,4 +294,59 @@ table.transactions .amount {
 
 .profile-setup tr.skipped {
   opacity: 0.5;
+
+/* Tables (Konto detail, Einzahlung vs Marktveränderung). */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.table th,
+.table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e6e9ee;
+  text-align: left;
+}
+
+.table .amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* Notes and Events (ticket 08) */
+.month-notes {
+  max-width: 40rem;
+  margin-top: 2rem;
+}
+
+.month-notes textarea {
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid #c5cbd3;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.month-notes .note {
+  white-space: pre-wrap;
+}
+
+.events {
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.event-fields .actions {
+  display: flex;
+  gap: 0.5rem;
 }
