@@ -3,3 +3,4 @@ export { InvalidDataFileError, WrongPasswordError, load, save } from "./encrypte
 export { BackupNotFoundError, MAX_BACKUPS, listBackups, type Backup } from "./backupFiles";
 export { restoreBackup } from "./backups";
 export { ExportTargetExistsError, exportUnencrypted } from "./export";
+export { TargetExistsError, changePassword, moveDataFile } from "./dataFileMaintenance";

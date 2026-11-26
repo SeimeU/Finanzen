@@ -74,3 +74,20 @@ async function backupNames(dataFile: string): Promise<string[]> {
     .sort()
     .reverse();
 }
+
+/** The files of all backups of the data file, newest first (for password change and moving). */
+export async function allBackupFiles(dataFile: string): Promise<string[]> {
+  return (await backupNames(dataFile)).map((name) => join(backupDir(dataFile), name));
+}
+
+/** Where a backup file of `fromDataFile` belongs once the data file lives at `toDataFile`. */
+export function relocatedBackupFile(backupPath: string, fromDataFile: string, toDataFile: string): string {
+  const stamp = basename(backupPath).slice(prefix(fromDataFile).length);
+  return join(backupDir(toDataFile), prefix(toDataFile) + stamp);
+}
+
+/** Removes the backups folder of the data file if it is empty. */
+export async function removeEmptyBackupDir(dataFile: string): Promise<void> {
+  const dir = backupDir(dataFile);
+  if (existsSync(dir) && (await readdir(dir)).length === 0) await rm(dir, { recursive: true });
+}

@@ -32,6 +32,8 @@ test("export unencrypted: after a warning, writes readable JSON to the chosen fi
 
   await page.getByRole("button", { name: "Einstellungen" }).click();
   const section = page.getByRole("region", { name: "Unverschlüsselt exportieren" });
+  // Wait for the suggested path to load, so it can't land in the field while we type.
+  await expect(section.getByLabel("Zieldatei")).not.toHaveValue("");
   await section.getByLabel("Zieldatei").fill(target);
   await section.getByRole("button", { name: "Unverschlüsselt exportieren" }).click();
 
