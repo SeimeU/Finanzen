@@ -11,6 +11,7 @@ import {
   loadDocument,
   netWorthSeries,
   saveSnapshot,
+  setPerHoldingFrom,
   snapshotForm,
   updateAccount,
   updateHolding,
@@ -221,7 +222,7 @@ export function createApp(initialConfig: AppConfig): Server {
       if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
         return error(400, "invalid-month", "Bitte einen gültigen Monat wählen.");
       }
-      return ok({ form: snapshotForm(session.document, month) });
+      return ok({ form: snapshotForm(session.document, month, localToday()) });
     },
     "POST /api/snapshots/save": async (body) => {
       if (!session) return locked();
@@ -229,7 +230,16 @@ export function createApp(initialConfig: AppConfig): Server {
       if (!result.ok) return error(400, result.error.code, result.error.message);
       await store.save(config.dataFile, session.password, result.document);
       session.document = result.document;
-      return ok({ form: snapshotForm(result.document, String(body.month)) });
+      return ok({ form: snapshotForm(result.document, String(body.month), localToday()) });
+    },
+    // Moves an Account's switch to per-Holding values; replies with the form for `formMonth`.
+    "POST /api/snapshots/per-holding-from": async ({ accountId, month, formMonth }) => {
+      if (!session) return locked();
+      const result = setPerHoldingFrom(session.document, { accountId: String(accountId), month: typeof month === "string" ? month : null });
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      await store.save(config.dataFile, session.password, result.document);
+      session.document = result.document;
+      return ok({ form: snapshotForm(result.document, String(formMonth), localToday()) });
     },
   };
 

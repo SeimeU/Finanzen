@@ -22,6 +22,11 @@ export type Account = {
   /** A debt's values are entered as positive amounts owed and count negatively. */
   isDebt: boolean;
   defaultClassification: Classification;
+  /**
+   * The first month whose values are recorded per Holding. Months before it take one
+   * Account-level value instead. null: per Holding in every month.
+   */
+  perHoldingFrom: YearMonth | null;
 };
 
 /**
@@ -53,13 +58,21 @@ export type Classification = {
 export type YearMonth = string;
 
 /**
- * The values recorded for one month. Holdings left out keep their latest earlier
- * value at query time. Later tickets add fields (Account-level values, Note, Events):
- * saveSnapshot replaces only holdingValues and keeps every other field.
+ * The values recorded for one month. Holdings (and Accounts) left out keep their latest
+ * earlier value at query time. Later tickets add fields (Note, Events): saveSnapshot
+ * replaces only holdingValues and accountValues and keeps every other field.
+ * An Account has values per Holding or an Account-level value in a month, never both.
  */
 export type Snapshot = {
   month: YearMonth;
   holdingValues: HoldingValue[];
+  accountValues: AccountValue[];
+};
+
+/** An Account-level value (Kontostand gesamt) in cents; counts under the Account's Default classification. */
+export type AccountValue = {
+  accountId: string;
+  marketValue: number;
 };
 
 /** Amounts in integer cents. A debt's value is entered positive (amount owed). */
@@ -70,7 +83,7 @@ export type HoldingValue = {
   contribution: number | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export function createEmptyDocument(): WealthDocument {
   return { schemaVersion: CURRENT_SCHEMA_VERSION, institutions: [], accounts: [], holdings: [], snapshots: [] };
