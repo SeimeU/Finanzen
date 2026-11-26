@@ -12,17 +12,19 @@ import { test as base, expect } from "@playwright/test";
  */
 type App = { url: string; dataFile: string; restart: () => Promise<void> };
 
-export const test = base.extend<{ app: App }>({
-  app: async ({ page }, use) => {
+export const test = base.extend<{ app: App; appEnv: Record<string, string> }>({
+  // Extra environment for the server, e.g. test.use({ appEnv: { FINANZEN_LOCK_TIMEOUT_MS: "1500" } }).
+  appEnv: [{}, { option: true }],
+  app: async ({ page, appEnv }, use) => {
     const dir = await mkdtemp(join(tmpdir(), "finanzen-e2e-"));
     const dataFile = join(dir, "vermoegen.dat");
-    let server = await startServer(dataFile);
+    let server = await startServer(dataFile, appEnv);
     const app: App = {
       url: server.url,
       dataFile,
       restart: async () => {
         await stopServer(server.process);
-        server = await startServer(dataFile);
+        server = await startServer(dataFile, appEnv);
         app.url = server.url;
       },
     };
@@ -42,9 +44,12 @@ export const test = base.extend<{ app: App }>({
 
 export { expect };
 
-async function startServer(dataFile: string): Promise<{ url: string; process: ChildProcess }> {
+async function startServer(
+  dataFile: string,
+  extraEnv: Record<string, string>,
+): Promise<{ url: string; process: ChildProcess }> {
   const child = spawn(process.execPath, ["--import", "tsx", "src/server/main.ts"], {
-    env: { ...process.env, FINANZEN_DATA_FILE: dataFile, FINANZEN_PORT: "0" },
+    env: { ...process.env, FINANZEN_DATA_FILE: dataFile, FINANZEN_PORT: "0", ...extraEnv },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const url = await new Promise<string>((resolve, reject) => {

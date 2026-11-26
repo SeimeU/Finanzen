@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "./api";
 import { AccountsView } from "./views/AccountsView";
 import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
@@ -19,8 +20,26 @@ const VIEWS = {
 
 type ViewKey = keyof typeof VIEWS;
 
-export function UnlockedApp() {
+/** How often the UI asks whether the server has locked itself (the status poll does not count as use). */
+const LOCK_POLL_MS = 3000;
+
+/** Also holds the Sperren button and the auto-lock watch: once the server has locked, `onLocked` returns to the unlock screen. */
+export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
   const [view, setView] = useState<ViewKey>("start");
+
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const status = await api.status().catch(() => null);
+      if (status && status.state !== "unlocked") onLocked();
+    }, LOCK_POLL_MS);
+    return () => clearInterval(timer);
+  }, [onLocked]);
+
+  async function lock() {
+    await api.lock();
+    onLocked();
+  }
+
   return (
     <>
       <nav className="nav" aria-label="Hauptnavigation">
@@ -34,12 +53,15 @@ export function UnlockedApp() {
             {VIEWS[key]}
           </button>
         ))}
+        <button type="button" className="lock" onClick={lock}>
+          Sperren
+        </button>
       </nav>
       {view === "start" && <StartView />}
       {view === "transactions" && <TransactionsView />}
       {view === "import" && <ImportView />}
       {view === "accounts" && <AccountsView />}
-      {view === "settings" && <SettingsView onBack={() => setView("start")} />}
+      {view === "settings" && <SettingsView />}
     </>
   );
 }

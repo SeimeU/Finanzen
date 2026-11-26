@@ -75,6 +75,16 @@ button {
   color: var(--muted);
 }
 
+.settings-section {
+  max-width: 26rem;
+  margin-bottom: 2rem;
+}
+
+.success {
+  margin: 0;
+  color: #1e6b34;
+}
+
 .nav {
   display: flex;
   gap: 0.5rem;
@@ -210,4 +220,11 @@ table.transactions td {
 table.transactions .amount {
   text-align: right;
   white-space: nowrap;
+}
+
+.nav .lock {
+  margin-left: auto;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
 }

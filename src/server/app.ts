@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dirname, extname, isAbsolute, join, normalize, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import {
   confirmImport,
   listImports,
@@ -21,21 +21,43 @@ import {
   type WealthDocument,
 } from "../core";
 import * as store from "../store";
+import { writeSettings } from "./settings";
 
 /**
  * Thin JSON API over the core and the store. Each command endpoint:
  * run the core command → on success save the document → reply.
  * Also serves the built UI (dist/ui) for every non-/api path.
  */
-export type AppConfig = { dataFile: string; uiDir: string };
+export type AppConfig = {
+  dataFile: string;
+  uiDir: string;
+  /** Discard the decrypted document after this long without requests (default 30 minutes). */
+  lockTimeoutMs?: number;
+  /** Where a data file location chosen in the settings is remembered (see settings.ts). */
+  settingsFile?: string;
+};
+
+export const DEFAULT_LOCK_TIMEOUT_MS = 30 * 60 * 1000;
 
 type Session = { password: string; document: WealthDocument };
 type Reply = { status: number; body: unknown };
 type Handler = (body: Record<string, unknown>) => Promise<Reply>;
 
-export function createApp(config: AppConfig): Server {
+export function createApp(initialConfig: AppConfig): Server {
+  // The data file location can change at runtime (settings), so keep a mutable copy.
+  const config = { ...initialConfig };
   // The decrypted document lives only here, and only while unlocked.
   let session: Session | null = null;
+  const lockTimeoutMs = config.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
+  let lockTimer: NodeJS.Timeout | undefined;
+
+  // Session lock: any request except the status poll counts as use and restarts the countdown.
+  function registerActivity() {
+    clearTimeout(lockTimer);
+    if (!session) return;
+    lockTimer = setTimeout(() => (session = null), lockTimeoutMs);
+    lockTimer.unref();
+  }
 
   /**
    * Runs a core command on the unlocked document, saves the result, then replies
@@ -145,6 +167,45 @@ export function createApp(config: AppConfig): Server {
       return ok({ state: "locked" });
     },
 
+    "POST /api/password": async ({ currentPassword, newPassword }) => {
+      if (!session) return locked();
+      if (currentPassword !== session.password) {
+        return error(401, "wrong-password", "Das aktuelle Passwort ist falsch.");
+      }
+      if (typeof newPassword !== "string" || newPassword === "") {
+        return error(400, "password-required", "Bitte ein neues Passwort eingeben.");
+      }
+      await store.changePassword(config.dataFile, session.password, newPassword);
+      session.password = newPassword;
+      return ok({});
+    },
+
+    "GET /api/settings": async () => {
+      if (!session) return locked();
+      return ok({ dataFile: config.dataFile });
+    },
+
+    "POST /api/data-file": async ({ path }) => {
+      if (!session) return locked();
+      if (typeof path !== "string" || !isAbsolute(path.trim())) {
+        return error(400, "absolute-path-required", "Bitte einen vollständigen Pfad angeben, z. B. D:\\Finanzen\\vermoegen.dat.");
+      }
+      let target = resolve(path.trim());
+      const existing = await stat(target).catch(() => null);
+      if (existing?.isDirectory()) target = join(target, basename(config.dataFile));
+      try {
+        await store.moveDataFile(config.dataFile, target);
+      } catch (e) {
+        if (e instanceof store.TargetExistsError) {
+          return error(409, "target-exists", "Am Ziel gibt es bereits eine Datei. Bitte einen anderen Pfad wählen.");
+        }
+        throw e;
+      }
+      config.dataFile = target;
+      if (config.settingsFile) await writeSettings(config.settingsFile, { dataFile: target });
+      return ok({ dataFile: target });
+    },
+
     "GET /api/structure": async () =>
       session ? ok({ structure: listStructure(session.document) }) : error(423, "locked", "Die App ist gesperrt."),
     "POST /api/institutions/create": command(createInstitution),
@@ -193,6 +254,7 @@ export function createApp(config: AppConfig): Server {
         const reply = handler
           ? await handler(await readJson(request))
           : error(404, "not-found", "Unbekannter Endpunkt.");
+        if (`${request.method} ${path}` !== "GET /api/status") registerActivity();
         sendJson(response, reply);
       } else {
         await serveStatic(config.uiDir, path, response);
