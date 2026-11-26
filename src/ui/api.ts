@@ -28,4 +28,8 @@ export const api = {
   setup: (password: string) => call<{ state: AppState }>("POST", "/api/setup", { password }),
   unlock: (password: string) => call<{ state: AppState }>("POST", "/api/unlock", { password }),
   lock: () => call<{ state: AppState }>("POST", "/api/lock"),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    call<object>("POST", "/api/password", { currentPassword, newPassword }),
+  settings: () => call<{ dataFile: string }>("GET", "/api/settings"),
+  moveDataFile: (path: string) => call<{ dataFile: string }>("POST", "/api/data-file", { path }),
 };
