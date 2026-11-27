@@ -66,7 +66,8 @@ test("the owner accepts a suggested Umbuchung, and marks and unmarks Umbuchungen
   await nav(page, "Nicht kategorisiert");
   await expect(page.getByRole("table", { name: "Nicht kategorisiert" }).getByRole("row")).toHaveCount(2); // header + 1
 
-  // Mark the card payment by hand, unmark the inbound side. The box shows the saved state once the list reloads.
+  // Mark the card payment by hand, unmark the inbound side: its accepted counterpart is unmarked too.
+  // The box shows the saved state once the list reloads.
   await nav(page, "Umsätze");
   const card = transactions.getByRole("row", { name: /Bezahlung Karte/ }).getByLabel("Umbuchung");
   const inbound = transactions.getByRole("row", { name: /Einzahlung/ }).getByLabel("Umbuchung");
@@ -77,6 +78,7 @@ test("the owner accepts a suggested Umbuchung, and marks and unmarks Umbuchungen
   await expect(transactions.getByRole("row", { name: /Einzahlung/ }).getByLabel("Kategorie").locator("option:checked")).toHaveText(
     "Nicht kategorisiert",
   );
+  await expect(transactions.getByRole("row", { name: /Sparen November/ }).getByLabel("Umbuchung")).not.toBeChecked();
 
   // It sticks across a restart.
   await app.restart();
@@ -84,8 +86,9 @@ test("the owner accepts a suggested Umbuchung, and marks and unmarks Umbuchungen
   await unlock(page, "geheim123");
   await nav(page, "Nicht kategorisiert");
   const inbox = page.getByRole("table", { name: "Nicht kategorisiert" });
-  await expect(inbox.getByRole("row")).toHaveCount(2);
+  await expect(inbox.getByRole("row")).toHaveCount(3); // header + both sides of the dissolved pair
   await expect(inbox).toContainText("Einzahlung");
+  await expect(inbox).toContainText("Sparen November");
 });
 
 test("a rejected suggestion is not offered again", async ({ page, app }) => {
