@@ -6,6 +6,7 @@ export {
   ASSET_CLASSES,
   LIQUIDITIES,
   type Account,
+  type AccountValue,
   type AssetClass,
   type Classification,
   type Holding,

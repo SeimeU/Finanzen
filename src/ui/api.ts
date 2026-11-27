@@ -76,6 +76,9 @@ export const snapshotsApi = {
   netWorth: () => call<{ series: NetWorthMonth[] }>("GET", "/api/net-worth"),
   form: (month: string) => call<{ form: SnapshotForm }>("POST", "/api/snapshots/form", { month }),
   save: (input: Omit<SnapshotInput, "today">) => call<{ form: SnapshotForm }>("POST", "/api/snapshots/save", input),
+  /** Sets the Account's first month per Holding (null: every month); replies with formMonth's form. */
+  setPerHoldingFrom: (input: { accountId: string; month: string | null; formMonth: string }) =>
+    call<{ form: SnapshotForm }>("POST", "/api/snapshots/per-holding-from", input),
 };
 
 // Kept apart from `api` so tickets adding endpoints in parallel don't collide.

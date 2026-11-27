@@ -64,7 +64,7 @@ export function notesAndEvents(document: WealthDocument): MonthNotes[] {
 
 /** Applies `change` to the month's Snapshot, creating an empty one (no values) if needed. */
 function withSnapshot(document: WealthDocument, month: YearMonth, change: (s: Snapshot) => Snapshot): WealthDocument {
-  const existing = document.snapshots.find((s) => s.month === month) ?? { month, holdingValues: [] };
+  const existing = document.snapshots.find((s) => s.month === month) ?? { month, holdingValues: [], accountValues: [] };
   const snapshots = [...document.snapshots.filter((s) => s.month !== month), change(existing)].sort((a, b) =>
     a.month.localeCompare(b.month),
   );

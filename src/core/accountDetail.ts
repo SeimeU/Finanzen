@@ -1,12 +1,10 @@
 import type { Classification, YearMonth, WealthDocument } from "./document";
 import { netWorthSeries, type NetWorthMonth } from "./snapshots";
-import { valuationOfHolding, type Valuation } from "./structure";
+import { valuationOfAccount, valuationOfHolding, type Valuation } from "./structure";
 
 /**
- * One value counted in a month's Net worth, resolved through the valuation helpers.
- * Today every entry is a Holding's value; Account-level values (ticket 04) add
- * entries here with `holdingId: null` and the Account's valuation, and every
- * query below picks them up.
+ * One value counted in a month's Net worth, resolved through the valuation helpers:
+ * a Holding's value, or an Account-level value (`holdingId: null`, the Account's valuation).
  */
 type ValuedEntry = {
   accountId: string;
@@ -18,14 +16,22 @@ type ValuedEntry = {
 };
 
 function valuedEntries(document: WealthDocument, month: NetWorthMonth): ValuedEntry[] {
-  return month.holdings.map((value) => ({
+  const accountLevel: ValuedEntry[] = month.accounts.map((value) => ({
+    accountId: value.accountId,
+    holdingId: null,
+    valuation: valuationOfAccount(document, value.accountId),
+    marketValue: value.marketValue,
+    contribution: null,
+    notUpdated: value.notUpdated,
+  }));
+  return [...accountLevel, ...month.holdings.map((value) => ({
     accountId: document.holdings.find((h) => h.id === value.holdingId)!.accountId,
     holdingId: value.holdingId,
     valuation: valuationOfHolding(document, value.holdingId),
     marketValue: value.marketValue,
     contribution: value.contribution,
     notUpdated: value.notUpdated,
-  }));
+  }))];
 }
 
 export type AccountMonth = {
@@ -116,20 +122,29 @@ export type ContributionMonth = {
  */
 export function contributionSplit(document: WealthDocument): ContributionMonth[] {
   const result: ContributionMonth[] = [];
-  let previous: Map<string, number> | null = null;
+  let previous: Map<string, { amount: number; isInvestment: boolean }> | null = null;
   let previousNetWorth = 0;
   for (const month of netWorthSeries(document)) {
     const entries = valuedEntries(document, month);
-    const current = new Map(entries.map((e) => [entryKey(e), e.valuation.sign * e.marketValue]));
+    const current = new Map(
+      entries.map((e) => [
+        entryKey(e),
+        { amount: e.valuation.sign * e.marketValue, isInvestment: e.valuation.classification.assetClass !== "cash" },
+      ]),
+    );
     if (previous) {
       let contribution = 0;
       let marketChange = 0;
       for (const entry of entries) {
         if (entry.valuation.classification.assetClass === "cash") continue;
         const paidIn = entry.valuation.sign * (entry.contribution ?? 0);
-        const change = current.get(entryKey(entry))! - (previous.get(entryKey(entry)) ?? 0);
+        const change = current.get(entryKey(entry))!.amount - (previous.get(entryKey(entry))?.amount ?? 0);
         contribution += paidIn;
         marketChange += change - paidIn;
+      }
+      // A value that ends this month (a Kontostand gesamt at the switch to per Holding) counts to zero.
+      for (const [key, value] of previous) {
+        if (!current.has(key) && value.isInvestment) marketChange -= value.amount;
       }
       const netWorthChange = month.netWorth - previousNetWorth;
       result.push({

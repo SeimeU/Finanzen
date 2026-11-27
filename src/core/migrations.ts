@@ -36,6 +36,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     categories: defaultCategories(),
     transactions: (document.transactions as object[]).map((t) => ({ ...t, manualCategoryId: null })),
   }),
+  // 7 → 8: Account-level values and each Account's switch to per-Holding values.
+  7: (document) => ({
+    ...document,
+    schemaVersion: 8,
+    accounts: (document.accounts as object[]).map((a) => ({ ...a, perHoldingFrom: null })),
+    snapshots: (document.snapshots as object[]).map((s) => ({ ...s, accountValues: [] })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */
