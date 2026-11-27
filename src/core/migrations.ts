@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, defaultCategories, type WealthDocument } from "./document";
+import { CURRENT_SCHEMA_VERSION, defaultCategories, defaultProjectionAssumptions, type WealthDocument } from "./document";
 import { fail, type Result } from "./result";
 
 type RawDocument = { schemaVersion: number } & Record<string, unknown>;
@@ -64,13 +64,15 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     transactions: (document.transactions as object[]).map((t) => ({ ...t, transferMark: null })),
     rejectedTransferSuggestions: [],
   }),
-  // 11 → 12: spending analysis: no Account flagged as carrying income or spending yet, and each
+  // 11 → 12: Projection assumptions, at their defaults.
+  11: (document) => ({ ...document, schemaVersion: 12, projectionAssumptions: defaultProjectionAssumptions() }),
+  // 12 → 13: spending analysis: no Account flagged as carrying income or spending yet, and each
   // import's covered date range (taken from the Transactions it stored; its duplicates are unknown).
-  11: (document) => {
+  12: (document) => {
     const transactions = document.transactions as { importId: string; bookingDate: string }[];
     return {
       ...document,
-      schemaVersion: 12,
+      schemaVersion: 13,
       accounts: (document.accounts as object[]).map((a) => ({ ...a, carriesCashFlow: false })),
       imports: (document.imports as { id: string }[]).map((i) => {
         const dates = transactions.filter((t) => t.importId === i.id).map((t) => t.bookingDate).sort();

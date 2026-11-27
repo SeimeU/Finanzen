@@ -7,6 +7,8 @@ import {
   closeAccount,
   closeHolding,
   contributionSplit,
+  projection,
+  setProjectionAssumptions,
   confirmImport,
   createCategory,
   deleteCategory,
@@ -35,6 +37,7 @@ import {
   createHolding,
   createInstitution,
   currentOverview,
+  maturityTimeline,
   listStructure,
   loadDocument,
   netWorthSeries,
@@ -273,6 +276,8 @@ export function createApp(initialConfig: AppConfig): Server {
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
     // Start screen headline figures and current breakdowns (ticket 09).
     "GET /api/overview": async () => (session ? ok({ overview: currentOverview(session.document) }) : locked()),
+    "GET /api/maturities": async () =>
+      session ? ok({ timeline: maturityTimeline(session.document, localToday()) }) : locked(),
     // Konto detail and Einzahlung vs market change (ticket 11).
     "POST /api/accounts/detail": async ({ id }) => {
       if (!session) return locked();
@@ -281,6 +286,9 @@ export function createApp(initialConfig: AppConfig): Server {
     },
     "GET /api/contributions": async () =>
       session ? ok({ months: contributionSplit(session.document) }) : locked(),
+    // Prognose (ticket 12): the Projection series with bands; saving the assumptions replies with it.
+    "GET /api/projection": async () => (session ? ok(projectionView(session.document)) : locked()),
+    "POST /api/projection/assumptions": command(setProjectionAssumptions, projectionView),
     "POST /api/snapshots/form": async ({ month }) => {
       if (!session) return locked();
       if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
@@ -412,6 +420,11 @@ export function createApp(initialConfig: AppConfig): Server {
       sendJson(response, error(500, "internal", "Interner Fehler."));
     }
   });
+}
+
+/** The Prognose replies: the stored assumptions (also without any Snapshot) and the Projection (null then). */
+function projectionView(document: WealthDocument) {
+  return { assumptions: document.projectionAssumptions, projection: projection(document) };
 }
 
 /** The local calendar date, "YYYY-MM-DD". The only place the clock is read for the core. */

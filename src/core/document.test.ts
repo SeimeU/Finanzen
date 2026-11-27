@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(12);
+    expect(CURRENT_SCHEMA_VERSION).toBe(13);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -90,11 +90,11 @@ describe("data document", () => {
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
   });
 
-  it("a version 11 document gets no Account flagged as carrying income or spending, and each import the date range of its Transactions", () => {
+  it("a version 12 document gets no Account flagged as carrying income or spending, and each import the date range of its Transactions", () => {
     const account = { id: "a1", institutionId: "i1", name: "Giro" };
-    const v11 = {
+    const v12 = {
       ...createEmptyDocument(),
-      schemaVersion: 11,
+      schemaVersion: 12,
       accounts: [account],
       imports: [{ id: "imp1", accountId: "a1" }],
       transactions: [
@@ -103,7 +103,7 @@ describe("data document", () => {
         { id: "t3", importId: "imp1", bookingDate: "2026-02-10" },
       ],
     };
-    const result = loadDocument(v11);
+    const result = loadDocument(v12);
     expect(result.ok && result.document).toMatchObject({
       schemaVersion: CURRENT_SCHEMA_VERSION,
       accounts: [{ ...account, carriesCashFlow: false }],
@@ -137,6 +137,16 @@ describe("data document", () => {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       accounts: [{ ...account, closingMonth: null }],
       holdings: [{ ...holding, startMonth: null, closingMonth: null }],
+    });
+  });
+
+  it("a version 11 document gets the default Projection assumptions", () => {
+    const v11 = { ...createEmptyDocument(), schemaVersion: 11 } as Record<string, unknown>;
+    delete v11.projectionAssumptions;
+    const result = loadDocument(v11);
+    expect(result.ok && result.document).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      projectionAssumptions: createEmptyDocument().projectionAssumptions,
     });
   });
 

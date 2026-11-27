@@ -23,7 +23,31 @@ export type WealthDocument = {
   categorizationRules: CategorizationRule[];
   /** Transfer suggestions the owner rejected, as Transaction id pairs; never suggested again. See ./transfers.ts. */
   rejectedTransferSuggestions: [string, string][];
+  /** What the Projection (Prognose) assumes. See ./projection.ts. */
+  projectionAssumptions: ProjectionAssumptions;
 };
+
+/** The owner's Projection settings. */
+export type ProjectionAssumptions = {
+  /** Expected annual return per Asset class, in percent (6 = 6 % a year). */
+  annualReturns: Record<AssetClass, number>;
+  /** Cents added to Available cash every month; null: the default (average of the last 12 months). */
+  monthlySavings: number | null;
+  horizonYears: (typeof PROJECTION_HORIZONS)[number];
+  /** Percentage points added to (optimistic) and subtracted from (pessimistic) every return. */
+  bandSpread: number;
+};
+
+export const PROJECTION_HORIZONS = [5, 10, 20] as const;
+
+export function defaultProjectionAssumptions(): ProjectionAssumptions {
+  return {
+    annualReturns: { cash: 1, etf: 6, stock: 6, bond: 3, crypto: 0, commodity: 2, other: 0 },
+    monthlySavings: null,
+    horizonYears: 10,
+    bandSpread: 2,
+  };
+}
 
 export type ImportAccountChoice = { fileName: string; accountId: string };
 
@@ -249,7 +273,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -265,6 +289,7 @@ export function createEmptyDocument(): WealthDocument {
     categories: defaultCategories(),
     categorizationRules: [],
     rejectedTransferSuggestions: [],
+    projectionAssumptions: defaultProjectionAssumptions(),
   };
 }
 
