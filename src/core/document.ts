@@ -1,0 +1,321 @@
+/**
+ * The data document: all of the owner's state as one versioned JSON value.
+ * To change its shape, bump CURRENT_SCHEMA_VERSION with a migration in ./migrations.ts.
+ */
+export type WealthDocument = {
+  schemaVersion: number;
+  institutions: Institution[];
+  accounts: Account[];
+  holdings: Holding[];
+  /** At most one per month, ordered by month. */
+  snapshots: Snapshot[];
+  /** Imported Transactions (Umsätze). They never change any Snapshot. */
+  transactions: Transaction[];
+  /** One entry per confirmed file import; undoing it removes exactly its Transactions. */
+  imports: ImportRecord[];
+  /** User-defined (generic) Import profiles, at most one per Account. */
+  importProfiles: GenericImportProfile[];
+  /** The Account last confirmed for each import file name; suggested when that name is dropped again. */
+  importAccountChoices: ImportAccountChoice[];
+  /** Two levels: top-level Categories (parentId null) and their children. See ./categories.ts. */
+  categories: Category[];
+  /** Categorization rules in the owner's order; the first match wins. See ./rules.ts. */
+  categorizationRules: CategorizationRule[];
+  /** Transfer suggestions the owner rejected, as Transaction id pairs; never suggested again. See ./transfers.ts. */
+  rejectedTransferSuggestions: [string, string][];
+  /** What the Projection (Prognose) assumes. See ./projection.ts. */
+  projectionAssumptions: ProjectionAssumptions;
+};
+
+/** The owner's Projection settings. */
+export type ProjectionAssumptions = {
+  /** Expected annual return per Asset class, in percent (6 = 6 % a year). */
+  annualReturns: Record<AssetClass, number>;
+  /** Cents added to Available cash every month; null: the default (average of the last 12 months). */
+  monthlySavings: number | null;
+  horizonYears: (typeof PROJECTION_HORIZONS)[number];
+  /** Percentage points added to (optimistic) and subtracted from (pessimistic) every return. */
+  bandSpread: number;
+};
+
+export const PROJECTION_HORIZONS = [5, 10, 20] as const;
+
+export function defaultProjectionAssumptions(): ProjectionAssumptions {
+  return {
+    annualReturns: { cash: 1, etf: 6, stock: 6, bond: 3, crypto: 0, commodity: 2, other: 0 },
+    monthlySavings: null,
+    horizonYears: 10,
+    bandSpread: 2,
+  };
+}
+
+export type ImportAccountChoice = { fileName: string; accountId: string };
+
+export type Institution = { id: string; name: string };
+
+export type Account = {
+  id: string;
+  institutionId: string;
+  name: string;
+  /** Normalized: upper case, no spaces. */
+  iban: string | null;
+  /** A debt's values are entered as positive amounts owed and count negatively. */
+  isDebt: boolean;
+  defaultClassification: Classification;
+  /**
+   * The first month whose values are recorded per Holding. Months before it take one
+   * Account-level value instead. null: per Holding in every month.
+   */
+  perHoldingFrom: YearMonth | null;
+  /** The first month the Account no longer appears in (closed as of it). null: open. See ./closing.ts. */
+  closingMonth: YearMonth | null;
+  /**
+   * The Account carries income or spending (e.g. a Girokonto): a month's Savings rate is only
+   * shown once this Account's imports cover the whole month. See ./spending.ts.
+   */
+  carriesCashFlow: boolean;
+};
+
+/**
+ * Snapshots (later tickets) reference a Holding by id only. Its classification
+ * and its Account's isDebt are looked up at query time, so editing them is
+ * reflected in every query, history included.
+ */
+export type Holding = {
+  id: string;
+  accountId: string;
+  name: string;
+  classification: Classification;
+  /** The first month the Holding can have a value. null: from the start. See ./closing.ts. */
+  startMonth: YearMonth | null;
+  /** The first month the Holding no longer appears in (closed as of it). null: open. */
+  closingMonth: YearMonth | null;
+};
+
+export const ASSET_CLASSES = ["cash", "etf", "stock", "bond", "crypto", "commodity", "other"] as const;
+export type AssetClass = (typeof ASSET_CLASSES)[number];
+
+export const LIQUIDITIES = ["available", "locked"] as const;
+export type Liquidity = (typeof LIQUIDITIES)[number];
+
+/** A Locked classification always has a maturityDate ("YYYY-MM-DD"); an Available one never has. */
+export type Classification = {
+  assetClass: AssetClass;
+  liquidity: Liquidity;
+  maturityDate: string | null;
+};
+
+/** A calendar month, "YYYY-MM". Its reference date is the month's last day. */
+export type YearMonth = string;
+
+export function isYearMonth(raw: unknown): raw is YearMonth {
+  return typeof raw === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw);
+}
+
+/**
+ * The values recorded for one month. Holdings (and Accounts) left out keep their latest
+ * earlier value at query time. Later tickets add fields (Note, Events): saveSnapshot
+ * replaces only holdingValues and accountValues and keeps every other field.
+ * An Account has values per Holding or an Account-level value in a month, never both.
+ */
+export type Snapshot = {
+  month: YearMonth;
+  holdingValues: HoldingValue[];
+  accountValues: AccountValue[];
+  /** Free text about the month; absent when there is none. */
+  note?: string;
+  /** Absent or empty when the month has none. */
+  events?: MonthEvent[];
+};
+
+/** An Account-level value (Kontostand gesamt) in cents; counts under the Account's Default classification. */
+export type AccountValue = {
+  accountId: string;
+  marketValue: number;
+};
+
+/** An Event: a notable happening in a month. Amount in cents, may be negative. */
+export type MonthEvent = { id: string; label: string; amount: number };
+
+/** Amounts in integer cents. A debt's value is entered positive (amount owed). */
+export type HoldingValue = {
+  holdingId: string;
+  marketValue: number;
+  /** Money newly paid in during the month; null when none was recorded. */
+  contribution: number | null;
+};
+
+/** One movement of money on an Account, read from a bank's CSV export. */
+export type Transaction = {
+  id: string;
+  accountId: string;
+  importId: string;
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** Signed EUR cents; outflows are negative. */
+  amountCents: number;
+  counterpartyName: string;
+  /** Normalized: upper case, no spaces. */
+  counterpartyIban: string | null;
+  paymentReference: string;
+  purpose: string;
+  origin: TransactionOrigin;
+  /** The Category the owner set by hand; it wins over every automatic classification. */
+  manualCategoryId: string | null;
+  /**
+   * The Category the Categorization rules gave it when it was imported or when the
+   * rules were last re-applied; null when no rule matched. Manual and Trade/Transfer
+   * classification win over it at query time.
+   */
+  ruleCategoryId: string | null;
+  /**
+   * The owner's own say on whether this is a Transfer: true marks it (also set by accepting a
+   * suggestion), false unmarks it against automatic detection, null leaves it to detection.
+   * A mark and a manual Category exclude each other: setting one clears the other.
+   */
+  transferMark: boolean | null;
+  /**
+   * The other side of an accepted Transfer suggestion (null otherwise). Unmarking either side
+   * (false or null) gives the counterpart the same mark and dissolves the pair.
+   */
+  transferPartnerId: string | null;
+};
+
+/**
+ * What the bank itself said about a Transaction, kept for classification
+ * (Trades, Transfers, Categories). Fields a format doesn't have are null.
+ */
+export type TransactionOrigin = {
+  /** Trade Republic: TRADING, CASH or CORPORATE_ACTION. */
+  category: string | null;
+  /** Trade Republic: BUY, CUSTOMER_INBOUND, INTEREST_PAYMENT, …, *_CANCELLED. */
+  type: string | null;
+  transactionId: string | null;
+  feeCents: number | null;
+  taxCents: number | null;
+  securityName: string | null;
+  isin: string | null;
+  /** ELBA: the raw Buchungstext the other fields were split from. */
+  rawText: string | null;
+  /** ELBA: the Valutadatum, "YYYY-MM-DD". */
+  valueDate: string | null;
+};
+
+export const CATEGORY_KINDS = ["income", "expense"] as const;
+export type CategoryKind = (typeof CATEGORY_KINDS)[number];
+
+/**
+ * What a Transaction was for. A child (parentId set) always has its parent's kind.
+ * Default Categories have readable ids (e.g. "kapitalertraege-zinsen"); new ones get c1, c2, ….
+ */
+export type Category = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  kind: CategoryKind;
+};
+
+/** Text conditions compare case-insensitively, with runs of whitespace collapsed. */
+export type RuleCondition =
+  | { field: "counterparty" | "purpose" | "reference"; operator: "contains" | "equals"; text: string }
+  /** Signed cents, as on the Transaction: outflows are negative. */
+  | { field: "amount"; operator: "equals" | "atLeast" | "atMost"; amountCents: number };
+
+/** A Categorization rule (Regel): Transactions meeting the condition get the Category. Ids r1, r2, …. */
+export type CategorizationRule = { id: string; condition: RuleCondition; categoryId: string };
+
+export type ImportRecord = {
+  id: string;
+  fileName: string;
+  /** The Import profile the file was read with, e.g. "trade-republic". */
+  profileId: string;
+  accountId: string;
+  /** ISO 8601 UTC instant, passed in by the caller. */
+  importedAt: string;
+  transactionCount: number;
+  duplicateCount: number;
+  /**
+   * The months of the earliest and latest booking among all the file's rows, duplicates included.
+   * The file counts as covering every whole month from `coveredFrom` to `coveredTo` on its
+   * Account (for the Savings rate's completeness), even without bookings on the 1st or last day.
+   */
+  coveredFrom: YearMonth;
+  coveredTo: YearMonth;
+};
+
+export const GENERIC_SEPARATORS = [";", ",", "\t", "|"] as const;
+export const GENERIC_DATE_FORMATS = ["DD.MM.YYYY", "YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"] as const;
+export const GENERIC_DECIMAL_SEPARATORS = [",", "."] as const;
+
+/** Zero-based column numbers; IBAN and payment reference are optional (null). */
+export type GenericColumnMapping = {
+  date: number | null;
+  amount: number | null;
+  counterpartyName: number | null;
+  purpose: number | null;
+  counterpartyIban: number | null;
+  paymentReference: number | null;
+};
+
+/** How the owner described one bank's CSV export. */
+export type GenericProfileSettings = {
+  separator: (typeof GENERIC_SEPARATORS)[number];
+  /** Lines at the top of the file (header included) that hold no Transactions. */
+  skipLines: number;
+  dateFormat: (typeof GENERIC_DATE_FORMATS)[number];
+  decimalSeparator: (typeof GENERIC_DECIMAL_SEPARATORS)[number];
+  columns: GenericColumnMapping;
+};
+
+/**
+ * A user-defined Import profile, saved for one Account. `columnCount` and `header`
+ * come from the sample file it was set up with and are what later files are recognized by.
+ */
+export type GenericImportProfile = GenericProfileSettings & {
+  id: string;
+  accountId: string;
+  columnCount: number;
+  /** The last skipped line's cells (trimmed, lower case) if it looks like a header row, else null. */
+  header: string[] | null;
+};
+
+export const CURRENT_SCHEMA_VERSION = 17;
+
+export function createEmptyDocument(): WealthDocument {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    institutions: [],
+    accounts: [],
+    holdings: [],
+    snapshots: [],
+    transactions: [],
+    imports: [],
+    importProfiles: [],
+    importAccountChoices: [],
+    categories: defaultCategories(),
+    categorizationRules: [],
+    rejectedTransferSuggestions: [],
+    projectionAssumptions: defaultProjectionAssumptions(),
+  };
+}
+
+/** The Category list a new document starts with (also added by the 6 → 7 migration). */
+export function defaultCategories(): Category[] {
+  const list: [string, string, CategoryKind, [string, string][]][] = [
+    ["einkommen", "Einkommen", "income", [["gehalt", "Gehalt"], ["praemien", "Prämien"], ["sonstige", "Sonstige Einnahmen"]]],
+    ["kapitalertraege", "Kapitalerträge", "income", [["zinsen", "Zinsen"], ["ausschuettungen", "Ausschüttungen"]]],
+    ["wohnen", "Wohnen", "expense", [["miete", "Miete"], ["betriebskosten", "Betriebskosten"], ["energie", "Strom & Gas"], ["internet", "Internet & Telefon"]]],
+    ["lebensmittel", "Lebensmittel", "expense", [["supermarkt", "Supermarkt"], ["baeckerei", "Bäckerei & Markt"]]],
+    ["mobilitaet", "Mobilität", "expense", [["oeffis", "Öffis"], ["auto", "Auto"], ["treibstoff", "Treibstoff"]]],
+    ["gesundheit", "Gesundheit", "expense", [["arzt", "Arzt & Apotheke"], ["sport", "Sport"]]],
+    ["freizeit", "Freizeit", "expense", [["restaurant", "Restaurant & Café"], ["urlaub", "Urlaub"], ["hobbys", "Hobbys"]]],
+    ["einkaeufe", "Einkäufe", "expense", [["kleidung", "Kleidung"], ["haushalt", "Haushalt & Elektronik"]]],
+    ["versicherungen", "Versicherungen", "expense", []],
+    ["steuern", "Steuern", "expense", [["kapitalertragsteuer", "Kapitalertragsteuer"], ["sonstige", "Sonstige Steuern"]]],
+    ["sonstiges", "Sonstiges", "expense", [["gebuehren", "Gebühren"], ["geschenke", "Geschenke & Spenden"]]],
+  ];
+  return list.flatMap(([id, name, kind, children]) => [
+    { id, name, parentId: null, kind },
+    ...children.map(([childId, childName]) => ({ id: `${id}-${childId}`, name: childName, parentId: id, kind })),
+  ]);
+}

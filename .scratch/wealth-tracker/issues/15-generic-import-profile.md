@@ -4,7 +4,7 @@
 
 **Blocked by:** 13: Trade Republic CSV import
 
-**Status:** ready-for-agent
+**Status:** done
 
 Spec: `.scratch/wealth-tracker/spec.md`. Vocabulary: `GLOSSARY.md`.
 

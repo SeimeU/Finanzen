@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: Historic Kontostand gesamt
 
-**Status:** ready-for-agent
+**Status:** done
 
 Spec: `.scratch/wealth-tracker/spec.md`. Vocabulary: `GLOSSARY.md`.
 
