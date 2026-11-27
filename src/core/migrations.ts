@@ -43,6 +43,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     accounts: (document.accounts as object[]).map((a) => ({ ...a, perHoldingFrom: null })),
     snapshots: (document.snapshots as object[]).map((s) => ({ ...s, accountValues: [] })),
   }),
+  // 8 → 9: starting and closing months of Holdings and Accounts (all open, from the start).
+  8: (document) => ({
+    ...document,
+    schemaVersion: 9,
+    accounts: (document.accounts as object[]).map((a) => ({ ...a, closingMonth: null })),
+    holdings: (document.holdings as object[]).map((h) => ({ ...h, startMonth: null, closingMonth: null })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(8);
+    expect(CURRENT_SCHEMA_VERSION).toBe(9);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -52,7 +52,7 @@ describe("data document", () => {
     expect(result.document.transactions[0]!.manualCategoryId).toBeNull();
     expect(result.document.importAccountChoices).toEqual([]);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null }]);
+    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null, closingMonth: null }]);
     expect(result.document.snapshots).toEqual([{ month: "2026-01", holdingValues: [], accountValues: [] }]);
   });
 
@@ -76,8 +76,20 @@ describe("data document", () => {
     const result = loadDocument(v7);
     expect(result.ok && result.document).toMatchObject({
       schemaVersion: CURRENT_SCHEMA_VERSION,
-      accounts: [{ ...account, perHoldingFrom: null }],
+      accounts: [{ ...account, perHoldingFrom: null, closingMonth: null }],
       snapshots: [{ month: "2026-01", holdingValues: [], accountValues: [] }],
+    });
+  });
+
+  it("a version 8 document gets open Holdings and Accounts, all from the start", () => {
+    const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {}, perHoldingFrom: null };
+    const holding = { id: "h1", accountId: "a1", name: "Giro", classification: {} };
+    const v8 = { ...createEmptyDocument(), schemaVersion: 8, institutions: [{ id: "i1", name: "Bank" }], accounts: [account], holdings: [holding] };
+    const result = loadDocument(v8);
+    expect(result.ok && result.document).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      accounts: [{ ...account, closingMonth: null }],
+      holdings: [{ ...holding, startMonth: null, closingMonth: null }],
     });
   });
 
