@@ -5,6 +5,8 @@ import type {
   ContributionMonth,
   Classification,
   FilePreview,
+  GenericProfileSettings,
+  ImportProfilePreview,
   HoldingInput,
   ImportedFile,
   ImportRecord,
@@ -114,6 +116,13 @@ export const importApi = {
   imports: () => call<{ imports: ImportRecord[] }>("GET", "/api/imports"),
   searchTransactions: (filter: TransactionFilter) =>
     call<{ transactions: Transaction[] }>("POST", "/api/transactions/search", filter),
+};
+
+export const importProfilesApi = {
+  preview: (settings: GenericProfileSettings, file: UploadFile) =>
+    call<{ preview: ImportProfilePreview }>("POST", "/api/import-profiles/preview", { settings, file }),
+  save: (accountId: string, settings: GenericProfileSettings, file: UploadFile) =>
+    call<{ id: string }>("POST", "/api/import-profiles/save", { accountId, settings, file }),
 };
 
 export async function toUploadFile(file: File): Promise<UploadFile> {

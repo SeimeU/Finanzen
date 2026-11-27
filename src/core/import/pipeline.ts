@@ -1,6 +1,7 @@
 import type { ImportRecord, Transaction, WealthDocument } from "../document";
 import { fail, type Result } from "../result";
 import { decodeText } from "./csv";
+import { genericProfiles } from "./generic";
 import type { ImportProfile, ParsedTransaction } from "./profile";
 import { BUILT_IN_PROFILES } from "./profiles";
 
@@ -33,7 +34,7 @@ export function previewImport(
     return fail("no-files", "Bitte mindestens eine CSV-Datei auswählen.");
   }
   const files = input.files.map((file): FilePreview => {
-    const read = readFile(file);
+    const read = readFile(document, file);
     if (!read.ok) return { name: file.name, ok: false, error: read.error };
     const accountId =
       file.accountId && document.accounts.some((a) => a.id === file.accountId)
@@ -75,7 +76,7 @@ export function confirmImport(
     if (!document.accounts.some((a) => a.id === file.accountId)) {
       return fail("account-required", `Bitte für „${file.name}“ ein Konto wählen.`);
     }
-    const read = readFile(file);
+    const read = readFile(document, file);
     if (!read.ok) return fail(read.error.code, `${file.name}: ${read.error.message}`);
     const { fresh, duplicateCount } = splitDuplicates(transactions, file.accountId, read.transactions);
     if (fresh.length === 0) {
@@ -130,12 +131,13 @@ type ReadFile =
   | { ok: true; profile: ImportProfile; transactions: ParsedTransaction[] }
   | { ok: false; error: { code: string; message: string } };
 
-function readFile(file: ImportFileInput): ReadFile {
+function readFile(document: WealthDocument, file: ImportFileInput): ReadFile {
   if (!(file.bytes instanceof Uint8Array) || file.bytes.length === 0) {
     return { ok: false, error: { code: "empty-file", message: "Die Datei ist leer." } };
   }
   const text = decodeText(file.bytes);
-  const profile = BUILT_IN_PROFILES.find((p) => p.detect(text));
+  // Built-in profiles first, then the owner's generic ones.
+  const profile = [...BUILT_IN_PROFILES, ...genericProfiles(document)].find((p) => p.detect(text));
   if (!profile) {
     return {
       ok: false,
@@ -148,6 +150,7 @@ function readFile(file: ImportFileInput): ReadFile {
 }
 
 function suggestAccount(document: WealthDocument, profile: ImportProfile): string | null {
+  if (profile.accountId && document.accounts.some((a) => a.id === profile.accountId)) return profile.accountId;
   const institutionIds = new Set(
     document.institutions.filter((i) => profile.matchesInstitution(i.name)).map((i) => i.id),
   );

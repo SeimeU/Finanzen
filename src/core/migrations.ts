@@ -17,10 +17,12 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
   2: (document) => ({ ...document, schemaVersion: 3, snapshots: [] }),
   // 3 → 4: imported Transactions and the imports they came from.
   3: (document) => ({ ...document, schemaVersion: 4, transactions: [], imports: [] }),
-  // 4 → 5: Account-level values and each Account's switch to per-Holding values.
-  4: (document) => ({
+  // 4 → 5: user-defined (generic) Import profiles.
+  4: (document) => ({ ...document, schemaVersion: 5, importProfiles: [] }),
+  // 5 → 6: Account-level values and each Account's switch to per-Holding values.
+  5: (document) => ({
     ...document,
-    schemaVersion: 5,
+    schemaVersion: 6,
     accounts: (document.accounts as object[]).map((a) => ({ ...a, perHoldingFrom: null })),
     snapshots: (document.snapshots as object[]).map((s) => ({ ...s, accountValues: [] })),
   }),
