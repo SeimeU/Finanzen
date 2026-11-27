@@ -4,7 +4,7 @@
 
 **Blocked by:** 14: ELBA import and several files at once; 16: Kategorien, inbox and Trade Republic classification
 
-**Status:** ready-for-agent
+**Status:** done
 
 Spec: `.scratch/wealth-tracker/spec.md`. Vocabulary: `GLOSSARY.md`.
 

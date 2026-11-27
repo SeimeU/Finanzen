@@ -1,6 +1,6 @@
 # Spec: Personal Wealth Tracker
 
-Status: ready-for-agent
+Status: done
 
 ## Problem Statement
 

@@ -4,7 +4,7 @@
 
 **Blocked by:** 13: Trade Republic CSV import
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (implemented; ELBA format still to be verified against a real export in `samples/`)
 
 Spec: `.scratch/wealth-tracker/spec.md`. Vocabulary: `GLOSSARY.md`.
 

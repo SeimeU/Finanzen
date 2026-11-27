@@ -4,7 +4,7 @@
 
 **Blocked by:** 03: Enter a Monatsstand and see Vermögen
 
-**Status:** ready-for-agent
+**Status:** done
 
 Spec: `.scratch/wealth-tracker/spec.md`. Vocabulary: `GLOSSARY.md`.
 

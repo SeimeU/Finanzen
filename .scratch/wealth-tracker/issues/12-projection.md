@@ -4,7 +4,7 @@
 
 **Blocked by:** 09: Start screen breakdowns; 11: Konto detail and Einzahlung vs market change
 
-**Status:** ready-for-agent
+**Status:** done
 
 Spec: `.scratch/wealth-tracker/spec.md`. Vocabulary: `GLOSSARY.md`.
 
