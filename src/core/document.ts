@@ -13,6 +13,8 @@ export type WealthDocument = {
   transactions: Transaction[];
   /** One entry per confirmed file import; undoing it removes exactly its Transactions. */
   imports: ImportRecord[];
+  /** User-defined (generic) Import profiles, at most one per Account. */
+  importProfiles: GenericImportProfile[];
 };
 
 export type Institution = { id: string; name: string };
@@ -126,7 +128,43 @@ export type ImportRecord = {
   duplicateCount: number;
 };
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const GENERIC_SEPARATORS = [";", ",", "\t", "|"] as const;
+export const GENERIC_DATE_FORMATS = ["DD.MM.YYYY", "YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"] as const;
+export const GENERIC_DECIMAL_SEPARATORS = [",", "."] as const;
+
+/** Zero-based column numbers; IBAN and payment reference are optional (null). */
+export type GenericColumnMapping = {
+  bookingDate: number | null;
+  amount: number | null;
+  counterpartyName: number | null;
+  purpose: number | null;
+  counterpartyIban: number | null;
+  paymentReference: number | null;
+};
+
+/** How the owner described one bank's CSV export. */
+export type GenericProfileSettings = {
+  separator: (typeof GENERIC_SEPARATORS)[number];
+  /** Lines at the top of the file (header included) that hold no Transactions. */
+  skipLines: number;
+  dateFormat: (typeof GENERIC_DATE_FORMATS)[number];
+  decimalSeparator: (typeof GENERIC_DECIMAL_SEPARATORS)[number];
+  columns: GenericColumnMapping;
+};
+
+/**
+ * A user-defined Import profile, saved for one Account. `columnCount` and `header`
+ * come from the sample file it was set up with and are what later files are recognized by.
+ */
+export type GenericImportProfile = GenericProfileSettings & {
+  id: string;
+  accountId: string;
+  columnCount: number;
+  /** The last skipped line's cells (trimmed, lower case) if it looks like a header row, else null. */
+  header: string[] | null;
+};
+
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -137,5 +175,6 @@ export function createEmptyDocument(): WealthDocument {
     snapshots: [],
     transactions: [],
     imports: [],
+    importProfiles: [],
   };
 }

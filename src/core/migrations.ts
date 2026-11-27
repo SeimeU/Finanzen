@@ -17,6 +17,8 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
   2: (document) => ({ ...document, schemaVersion: 3, snapshots: [] }),
   // 3 → 4: imported Transactions and the imports they came from.
   3: (document) => ({ ...document, schemaVersion: 4, transactions: [], imports: [] }),
+  // 4 → 5: user-defined (generic) Import profiles.
+  4: (document) => ({ ...document, schemaVersion: 5, importProfiles: [] }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

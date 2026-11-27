@@ -8,7 +8,10 @@ import {
   confirmImport,
   listImports,
   previewImport,
+  previewImportProfile,
+  saveImportProfile,
   searchTransactions,
+  type GenericProfileSettings,
   undoImport,
   createAccount,
   createEmptyDocument,
@@ -295,6 +298,25 @@ export function createApp(initialConfig: AppConfig): Server {
       session.document = result.document;
       return ok({ imports: listImports(result.document) });
     },
+    // Generic Import profiles: { accountId, settings, file: { name, contentBase64 } } (the sample file).
+    "POST /api/import-profiles/preview": async ({ settings, file }) => {
+      if (!session) return locked();
+      const [sample] = decodeFiles([file]);
+      return ok({ preview: previewImportProfile({ settings: settings as GenericProfileSettings, sample: sample!.bytes }) });
+    },
+    "POST /api/import-profiles/save": async ({ accountId, settings, file }) => {
+      if (!session) return locked();
+      const [sample] = decodeFiles([file]);
+      const result = saveImportProfile(session.document, {
+        accountId: String(accountId ?? ""),
+        settings: settings as GenericProfileSettings,
+        sample: sample!.bytes,
+      });
+      if (!result.ok) return error(400, result.error.code, result.error.message);
+      await store.save(config.dataFile, session.password, result.document);
+      session.document = result.document;
+      return ok({ id: result.id });
+    },
     "GET /api/imports": async () => (session ? ok({ imports: listImports(session.document) }) : locked()),
     "POST /api/transactions/search": async (filter) =>
       session ? ok({ transactions: searchTransactions(session.document, filter) }) : locked(),
@@ -329,7 +351,7 @@ function localToday(): string {
 /** `[{ name, contentBase64, ...rest }]` from the UI → `[{ name, bytes, ...rest }]` for the core. */
 function decodeFiles(raw: unknown): { name: string; bytes: Uint8Array; accountId?: string }[] {
   if (!Array.isArray(raw)) return [];
-  return raw.map(({ contentBase64, ...rest }) => ({
+  return raw.map(({ contentBase64, ...rest } = {}) => ({
     ...rest,
     name: String(rest.name ?? ""),
     bytes: new Uint8Array(Buffer.from(String(contentBase64 ?? ""), "base64")),
