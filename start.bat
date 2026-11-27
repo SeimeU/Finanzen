@@ -5,6 +5,7 @@ rem dist\ui is missing or older than the sources. Then the local server (127.0.0
 rem starts from the installed and built files, without any network access, and opens
 rem the default browser.
 cd /d "%~dp0"
+node scripts\check-node.mjs || goto :error
 fc /b package-lock.json node_modules\.finanzen-installed.json >nul 2>&1
 if errorlevel 1 (
   echo Erster Start: Abhaengigkeiten werden installiert, dafuer ist einmal Internet noetig ...

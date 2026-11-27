@@ -2,7 +2,7 @@
 
 A local, offline wealth tracker with a German interface. The data lives in one password-encrypted file. See `.scratch/wealth-tracker/spec.md`, `GLOSSARY.md` and `docs/adr/`.
 
-Requires Node.js 22.
+Requires Node.js 22.12 or newer (older versions make npm silently skip the native build tools). `start.bat` checks this before installing.
 
 ## Start the app
 
