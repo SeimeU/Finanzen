@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import type { ClassifiedTransaction } from "../../core";
-import { api, ApiError, categoriesApi, importApi } from "../api";
+import { api, ApiError, categoriesApi, importApi, transfersApi } from "../api";
 import { formatDate, formatEur } from "../format";
 import { accountOptions, categoryOptions } from "../labels";
 import { TransactionCategorySelect } from "./TransactionCategorySelect";
 
-/** The Transaction list (Umsätze), filtered by Konto, date range and text; each row's Kategorie can be set by hand. */
+/**
+ * The Transaction list (Umsätze), filtered by Konto, date range and text; each row's Kategorie
+ * can be set by hand, and it can be marked or unmarked as an Umbuchung.
+ */
 export function TransactionsView() {
   const [accounts, setAccounts] = useState<{ id: string; label: string }[]>([]);
   const [accountId, setAccountId] = useState("");
@@ -36,6 +39,18 @@ export function TransactionsView() {
     setError("");
     try {
       await categoriesApi.setTransactionCategory(transactionId, categoryId);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      setError(e.message);
+    }
+  }
+
+  /** Checking marks the Transaction as an Umbuchung by hand; unchecking unmarks it, also against IBAN detection. */
+  async function markTransfer(transactionId: string, transfer: boolean) {
+    setError("");
+    try {
+      await transfersApi.setTransfer(transactionId, transfer);
       setVersion((v) => v + 1);
     } catch (e) {
       if (!(e instanceof ApiError)) throw e;
@@ -85,6 +100,7 @@ export function TransactionsView() {
               <th>Verwendungszweck</th>
               <th className="amount">Betrag</th>
               <th>Kategorie</th>
+              <th>Umbuchung</th>
             </tr>
           </thead>
           <tbody>
@@ -103,6 +119,14 @@ export function TransactionsView() {
                 <td className="amount">{formatEur(t.amountCents)}</td>
                 <td>
                   <TransactionCategorySelect transaction={t} options={categories} onChange={(c) => categorize(t.id, c)} />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label="Umbuchung"
+                    checked={t.classification.kind === "transfer"}
+                    onChange={(e) => markTransfer(t.id, e.target.checked)}
+                  />
                 </td>
               </tr>
             ))}

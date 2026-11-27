@@ -5,42 +5,54 @@ import { fail, type Result } from "./result";
  * How a Transaction counts. Computed at query time from the document, never stored,
  * so editing Categories is reflected everywhere at once. Only the match of the
  * Categorization rules is stored (rules apply on import and on an explicit re-apply).
- * `cashFlow` says how spending and income queries count it: Trades (and, with
- * ticket 18, Transfers) are "excluded"; Uncategorized is "unknown".
+ * `cashFlow` says how spending and income queries count it: Trades and Transfers
+ * are "excluded"; Uncategorized is "unknown".
  */
 export type TransactionClassification =
   | { kind: "category"; categoryId: string; source: CategorySource; cashFlow: CategoryKind }
   | { kind: "trade"; direction: "buy" | "sell"; cashFlow: "excluded" }
+  | { kind: "transfer"; source: TransferSource; cashFlow: "excluded" }
   | { kind: "uncategorized"; cashFlow: "unknown" };
 
 /** Who put the Transaction in its Category. */
 export type CategorySource = "manual" | "bank" | "rule";
+
+/**
+ * Why a Transaction is a Transfer (Umbuchung): its counterparty IBAN is another of the
+ * owner's Accounts ("iban"), or the owner marked it by hand or accepted a suggestion ("manual").
+ */
+export type TransferSource = "iban" | "manual";
 
 export type ClassifiedTransaction = Transaction & { classification: TransactionClassification };
 
 /** What one precedence step decides; null passes the Transaction on to the next step. */
 type Proposal =
   | { kind: "category"; categoryId: string; source: CategorySource }
-  | { kind: "trade"; direction: "buy" | "sell" };
+  | { kind: "trade"; direction: "buy" | "sell" }
+  | { kind: "transfer"; source: TransferSource };
 
 type Context = {
   categories: Map<string, Category>;
   /** importId → the Import profile id the Transaction was read with. */
   profileOf: Map<string, string>;
+  /** Normalized IBAN → the owner's Account with that IBAN. */
+  ownIbans: Map<string, string>;
 };
 
 type Classifier = (transaction: Transaction, context: Context) => Proposal | null;
 
 /**
- * THE categorization precedence (spec): manual Category → Trade/Transfer → first
+ * THE categorization precedence (spec): manual Category → manual Transfer mark →
+ * bank classification (Trades, interest, tax) → IBAN Transfer detection → first
  * matching Categorization rule → Uncategorized. The first step that returns a
  * proposal wins. A Category proposal naming a Category that no longer exists is
  * ignored, so the Transaction falls through to the next step (in the end, the inbox).
  */
 const PRECEDENCE: Classifier[] = [
   manualCategory,
+  markedTransfer,
   bankClassification,
-  // Ticket 18: Transfer detection belongs here, next to the bank's own Trade classification.
+  ibanTransfer,
   categorizationRule,
 ];
 
@@ -49,6 +61,7 @@ export function classifyTransactions(document: WealthDocument, transactions: Tra
   const context: Context = {
     categories: new Map(document.categories.map((c) => [c.id, c])),
     profileOf: new Map(document.imports.map((i) => [i.id, i.profileId])),
+    ownIbans: new Map(document.accounts.flatMap((a) => (a.iban ? [[a.iban, a.id] as const] : []))),
   };
   return transactions.map((t) => ({ ...t, classification: classify(t, context) }));
 }
@@ -58,6 +71,7 @@ function classify(transaction: Transaction, context: Context): TransactionClassi
     const proposal = step(transaction, context);
     if (!proposal) continue;
     if (proposal.kind === "trade") return { kind: "trade", direction: proposal.direction, cashFlow: "excluded" };
+    if (proposal.kind === "transfer") return { kind: "transfer", source: proposal.source, cashFlow: "excluded" };
     const category = context.categories.get(proposal.categoryId);
     if (category) return { ...proposal, cashFlow: category.kind };
   }
@@ -68,6 +82,18 @@ function manualCategory(transaction: Transaction): Proposal | null {
   return transaction.manualCategoryId
     ? { kind: "category", categoryId: transaction.manualCategoryId, source: "manual" }
     : null;
+}
+
+/** Marked as a Transfer by hand (or by accepting a suggestion): overrides the bank and IBAN detection. */
+function markedTransfer(transaction: Transaction): Proposal | null {
+  return transaction.transferMark === true ? { kind: "transfer", source: "manual" } : null;
+}
+
+/** A Transfer when the counterparty IBAN is another of the owner's Accounts, unless the owner unmarked it. */
+function ibanTransfer(transaction: Transaction, context: Context): Proposal | null {
+  if (transaction.transferMark === false) return null;
+  const account = transaction.counterpartyIban ? context.ownIbans.get(transaction.counterpartyIban) : undefined;
+  return account && account !== transaction.accountId ? { kind: "transfer", source: "iban" } : null;
 }
 
 /**
@@ -107,7 +133,10 @@ function tradeRepublicMapping(origin: TransactionOrigin, amountCents: number): P
   return null;
 }
 
-/** Sets (or, with categoryId null, clears) the Category the owner chose by hand. */
+/**
+ * Sets (or, with categoryId null, clears) the Category the owner chose by hand.
+ * Setting one clears a Transfer mark (true), so the last choice made by hand wins.
+ */
 export function setTransactionCategory(
   document: WealthDocument,
   input: { transactionId: string; categoryId: string | null },
@@ -124,7 +153,9 @@ export function setTransactionCategory(
     document: {
       ...document,
       transactions: document.transactions.map((t) =>
-        t.id === input.transactionId ? { ...t, manualCategoryId: categoryId } : t,
+        t.id === input.transactionId
+          ? { ...t, manualCategoryId: categoryId, transferMark: categoryId !== null && t.transferMark === true ? null : t.transferMark }
+          : t,
       ),
     },
   };

@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(10);
+    expect(CURRENT_SCHEMA_VERSION).toBe(11);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -30,7 +30,7 @@ describe("data document", () => {
     expect(result.document.importAccountChoices).toEqual([]);
   });
 
-  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories, Account-level values, Categorization rules, open Holdings and Accounts", () => {
+  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories, Account-level values, Categorization rules, open Holdings and Accounts, no Transfer marks", () => {
     const origin = { category: "CASH", type: "BUY", transactionId: "x", feeCents: null, taxCents: null, securityName: null, isin: null };
     const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {} };
     const v4 = {
@@ -46,6 +46,7 @@ describe("data document", () => {
     delete v4.importAccountChoices;
     delete v4.categories;
     delete v4.categorizationRules;
+    delete v4.rejectedTransferSuggestions;
     const result = loadDocument(v4);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
@@ -53,7 +54,9 @@ describe("data document", () => {
     expect(result.document.transactions[0]!.origin).toEqual({ ...origin, bookingText: null, valueDate: null });
     expect(result.document.transactions[0]!.manualCategoryId).toBeNull();
     expect(result.document.transactions[0]!.ruleCategoryId).toBeNull();
+    expect(result.document.transactions[0]!.transferMark).toBeNull();
     expect(result.document.categorizationRules).toEqual([]);
+    expect(result.document.rejectedTransferSuggestions).toEqual([]);
     expect(result.document.importAccountChoices).toEqual([]);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
     expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null, closingMonth: null }]);
@@ -66,7 +69,7 @@ describe("data document", () => {
     const result = loadDocument(v6);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, ruleCategoryId: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
   });
 
   it("a version 8 document gets no Categorization rules, and its Transactions no rule Category", () => {
@@ -75,7 +78,16 @@ describe("data document", () => {
     const result = loadDocument(v8);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.categorizationRules).toEqual([]);
-    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+  });
+
+  it("a version 10 document's Transactions get no Transfer mark and nothing is rejected yet", () => {
+    const v10 = { ...createEmptyDocument(), schemaVersion: 10, transactions: [{ id: "t1", manualCategoryId: null, ruleCategoryId: null }] } as Record<string, unknown>;
+    delete v10.rejectedTransferSuggestions;
+    const result = loadDocument(v10);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+    expect(result.document.rejectedTransferSuggestions).toEqual([]);
   });
 
   it("a version 7 document gets Account-level values: none recorded, every Account per Holding", () => {

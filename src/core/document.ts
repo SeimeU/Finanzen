@@ -21,6 +21,8 @@ export type WealthDocument = {
   categories: Category[];
   /** Categorization rules in the owner's order; the first match wins. See ./rules.ts. */
   categorizationRules: CategorizationRule[];
+  /** Transfer suggestions the owner rejected, as Transaction id pairs; never suggested again. See ./transfers.ts. */
+  rejectedTransferSuggestions: [string, string][];
 };
 
 export type ImportAccountChoice = { fileName: string; accountId: string };
@@ -137,6 +139,12 @@ export type Transaction = {
    * classification win over it at query time.
    */
   ruleCategoryId: string | null;
+  /**
+   * The owner's own say on whether this is a Transfer: true marks it (also set by accepting a
+   * suggestion), false unmarks it against automatic detection, null leaves it to detection.
+   * A mark and a manual Category exclude each other: setting one clears the other.
+   */
+  transferMark: boolean | null;
 };
 
 /**
@@ -230,7 +238,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -245,6 +253,7 @@ export function createEmptyDocument(): WealthDocument {
     importAccountChoices: [],
     categories: defaultCategories(),
     categorizationRules: [],
+    rejectedTransferSuggestions: [],
   };
 }
 

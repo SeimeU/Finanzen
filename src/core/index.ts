@@ -52,7 +52,9 @@ export {
   type CategorySource,
   type ClassifiedTransaction,
   type TransactionClassification,
+  type TransferSource,
 } from "./classification";
+export * from "./transfers";
 export * from "./categories";
 export { type CategorizationRule, type RuleCondition } from "./document";
 export { createRule, deleteRule, listRules, moveRule, reapplyRules, updateRule, type RuleInput } from "./rules";

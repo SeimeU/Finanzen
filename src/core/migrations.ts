@@ -57,6 +57,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     accounts: (document.accounts as object[]).map((a) => ({ ...a, closingMonth: null })),
     holdings: (document.holdings as object[]).map((h) => ({ ...h, startMonth: null, closingMonth: null })),
   }),
+  // 10 → 11: Transfers: the owner's mark on each Transaction and the rejected Transfer suggestions.
+  10: (document) => ({
+    ...document,
+    schemaVersion: 11,
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, transferMark: null })),
+    rejectedTransferSuggestions: [],
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

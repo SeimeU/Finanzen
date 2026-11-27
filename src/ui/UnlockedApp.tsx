@@ -11,6 +11,7 @@ import { SettingsView } from "./views/SettingsView";
 import { SnapshotView } from "./views/SnapshotView";
 import { StartView } from "./views/StartView";
 import { TransactionsView } from "./views/TransactionsView";
+import { TransfersView } from "./views/TransfersView";
 
 /**
  * Navigation between the unlocked views. A simple state-based switch: to add a
@@ -24,6 +25,7 @@ const VIEWS = {
   inbox: "Nicht kategorisiert",
   categories: "Kategorien",
   rules: "Regeln",
+  transfers: "Umbuchungen",
   import: "Import",
   accounts: "Konten verwalten",
   settings: "Einstellungen",
@@ -84,6 +86,7 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
           {view === "inbox" && <InboxView />}
           {view === "categories" && <CategoriesView />}
           {view === "rules" && <RulesView />}
+          {view === "transfers" && <TransfersView />}
           {view === "import" && <ImportView />}
           {view === "accounts" && <AccountsView onOpenAccount={setOpenAccountId} />}
           {view === "settings" && <SettingsView />}
