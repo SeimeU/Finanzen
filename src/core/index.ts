@@ -51,3 +51,5 @@ export {
   type TransactionClassification,
 } from "./classification";
 export * from "./categories";
+export { type CategorizationRule, type RuleCondition } from "./document";
+export { createRule, deleteRule, listRules, moveRule, reapplyRules, updateRule, type RuleInput } from "./rules";

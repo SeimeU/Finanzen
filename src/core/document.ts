@@ -19,6 +19,8 @@ export type WealthDocument = {
   importAccountChoices: ImportAccountChoice[];
   /** Two levels: top-level Categories (parentId null) and their children. See ./categories.ts. */
   categories: Category[];
+  /** Categorization rules in the owner's order; the first match wins. See ./rules.ts. */
+  categorizationRules: CategorizationRule[];
 };
 
 export type ImportAccountChoice = { fileName: string; accountId: string };
@@ -106,6 +108,12 @@ export type Transaction = {
   origin: TransactionOrigin;
   /** The Category the owner set by hand; it wins over every automatic classification. */
   manualCategoryId: string | null;
+  /**
+   * The Category the Categorization rules gave it when it was imported or when the
+   * rules were last re-applied; null when no rule matched. Manual and Trade/Transfer
+   * classification win over it at query time.
+   */
+  ruleCategoryId: string | null;
 };
 
 /**
@@ -141,6 +149,15 @@ export type Category = {
   parentId: string | null;
   kind: CategoryKind;
 };
+
+/** Text conditions compare case-insensitively, with runs of whitespace collapsed. */
+export type RuleCondition =
+  | { field: "counterparty" | "purpose" | "reference"; operator: "contains" | "equals"; text: string }
+  /** Signed cents, as on the Transaction: outflows are negative. */
+  | { field: "amount"; operator: "equals" | "atLeast" | "atMost"; amountCents: number };
+
+/** A Categorization rule (Regel): Transactions meeting the condition get the Category. Ids r1, r2, …. */
+export type CategorizationRule = { id: string; condition: RuleCondition; categoryId: string };
 
 export type ImportRecord = {
   id: string;
@@ -190,7 +207,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -204,6 +221,7 @@ export function createEmptyDocument(): WealthDocument {
     importProfiles: [],
     importAccountChoices: [],
     categories: defaultCategories(),
+    categorizationRules: [],
   };
 }
 

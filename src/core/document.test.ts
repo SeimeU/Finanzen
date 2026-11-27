@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(7);
+    expect(CURRENT_SCHEMA_VERSION).toBe(8);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -51,7 +51,16 @@ describe("data document", () => {
     const result = loadDocument(v6);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, ruleCategoryId: null }]);
+  });
+
+  it("a version 7 document gets no Categorization rules, and its Transactions no rule Category", () => {
+    const v7 = { ...createEmptyDocument(), schemaVersion: 7, transactions: [{ id: "t1", manualCategoryId: null }] } as Record<string, unknown>;
+    delete v7.categorizationRules;
+    const result = loadDocument(v7);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.categorizationRules).toEqual([]);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null }]);
   });
 
   it("rejects a document from a newer app version", () => {

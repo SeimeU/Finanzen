@@ -36,6 +36,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     categories: defaultCategories(),
     transactions: (document.transactions as object[]).map((t) => ({ ...t, manualCategoryId: null })),
   }),
+  // 7 → 8: Categorization rules, and the Category they gave each Transaction.
+  7: (document) => ({
+    ...document,
+    schemaVersion: 8,
+    categorizationRules: [],
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, ruleCategoryId: null })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */
