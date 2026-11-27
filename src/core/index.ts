@@ -19,6 +19,7 @@ export {
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
+export { accountIsOpen, closeAccount, closeHolding, holdingIsActive, setHoldingStart } from "./closing";
 export * from "./notes";
 export * from "./accountDetail";
 export * from "./overview";

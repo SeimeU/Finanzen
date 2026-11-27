@@ -6,12 +6,18 @@ import {
   type Holding,
   type Institution,
   type WealthDocument,
+  type YearMonth,
+  isYearMonth,
 } from "./document";
+import { setHoldingStart } from "./closing";
 import { fail, type Result } from "./result";
 
 type Created = Result<{ document: WealthDocument; id: string }>;
 
 export type HoldingInput = { accountId: string; name: string; classification: Classification };
+
+/** startMonth: the first month the Holding can have a value (e.g. when it was bought); omitted or null: from the start. */
+export type NewHoldingInput = HoldingInput & { startMonth?: YearMonth | null };
 
 export type AccountInput = {
   institutionId: string;
@@ -36,18 +42,20 @@ export function createAccount(document: WealthDocument, input: AccountInput): Cr
   return {
     ok: true,
     id,
-    document: { ...document, accounts: [...document.accounts, { ...account.value, id, perHoldingFrom: null }] },
+    document: { ...document, accounts: [...document.accounts, { ...account.value, id, perHoldingFrom: null, closingMonth: null }] },
   };
 }
 
-export function createHolding(document: WealthDocument, input: HoldingInput): Created {
+export function createHolding(document: WealthDocument, input: NewHoldingInput): Created {
   const holding = validHolding(document, "", input);
   if (!holding.ok) return holding;
+  const startMonth = input.startMonth ?? null;
+  if (startMonth !== null && !isYearMonth(startMonth)) return fail("invalid-month", "Bitte einen gültigen Monat wählen.");
   const id = nextId(document, "h");
   return {
     ok: true,
     id,
-    document: { ...document, holdings: [...document.holdings, { ...holding.value, id }] },
+    document: { ...document, holdings: [...document.holdings, { ...holding.value, id, startMonth, closingMonth: null }] },
   };
 }
 
@@ -81,24 +89,31 @@ export function updateAccount(
     ok: true,
     document: {
       ...document,
-      accounts: document.accounts.map((a) => (a.id === input.id ? { ...account.value, perHoldingFrom: a.perHoldingFrom } : a)),
+      accounts: document.accounts.map((a) => (a.id === input.id ? { ...account.value, perHoldingFrom: a.perHoldingFrom, closingMonth: a.closingMonth } : a)),
     },
   };
 }
 
-/** Replaces the Holding's name and classification; it stays in its Account. */
+/**
+ * Replaces the Holding's name and classification; it stays in its Account.
+ * startMonth, if given, is set as setHoldingStart does (left out: unchanged).
+ */
 export function updateHolding(
   document: WealthDocument,
-  input: { id: string; name: string; classification: Classification },
+  input: { id: string; name: string; classification: Classification; startMonth?: YearMonth | null },
 ): Updated {
   const existing = document.holdings.find((h) => h.id === input.id);
   if (!existing) return fail("holding-not-found", "Die Position gibt es nicht.");
   const holding = validHolding(document, input.id, { ...input, accountId: existing.accountId });
   if (!holding.ok) return holding;
-  return {
-    ok: true,
-    document: { ...document, holdings: document.holdings.map((h) => (h.id === input.id ? holding.value : h)) },
+  const updated: WealthDocument = {
+    ...document,
+    holdings: document.holdings.map((h) =>
+      h.id === input.id ? { ...holding.value, startMonth: h.startMonth, closingMonth: h.closingMonth } : h,
+    ),
   };
+  if (input.startMonth === undefined) return { ok: true, document: updated };
+  return setHoldingStart(updated, { holdingId: input.id, month: input.startMonth });
 }
 
 /**
@@ -155,7 +170,7 @@ function validAccount(
   document: WealthDocument,
   id: string,
   input: AccountInput,
-): Valid<Omit<Account, "perHoldingFrom">> {
+): Valid<Omit<Account, "perHoldingFrom" | "closingMonth">> {
   if (!document.institutions.some((i) => i.id === input.institutionId)) {
     return fail("institution-not-found", "Das Institut gibt es nicht.");
   }
@@ -218,7 +233,11 @@ function isIsoDate(raw: unknown): raw is string {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === raw;
 }
 
-function validHolding(document: WealthDocument, id: string, input: HoldingInput): Valid<Holding> {
+function validHolding(
+  document: WealthDocument,
+  id: string,
+  input: HoldingInput,
+): Valid<Omit<Holding, "startMonth" | "closingMonth">> {
   if (!document.accounts.some((a) => a.id === input.accountId)) {
     return fail("account-not-found", "Das Konto gibt es nicht.");
   }

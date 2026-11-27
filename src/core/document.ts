@@ -41,6 +41,8 @@ export type Account = {
    * Account-level value instead. null: per Holding in every month.
    */
   perHoldingFrom: YearMonth | null;
+  /** The first month the Account no longer appears in (closed as of it). null: open. See ./closing.ts. */
+  closingMonth: YearMonth | null;
 };
 
 /**
@@ -53,6 +55,10 @@ export type Holding = {
   accountId: string;
   name: string;
   classification: Classification;
+  /** The first month the Holding can have a value. null: from the start. See ./closing.ts. */
+  startMonth: YearMonth | null;
+  /** The first month the Holding no longer appears in (closed as of it). null: open. */
+  closingMonth: YearMonth | null;
 };
 
 export const ASSET_CLASSES = ["cash", "etf", "stock", "bond", "crypto", "commodity", "other"] as const;
@@ -70,6 +76,10 @@ export type Classification = {
 
 /** A calendar month, "YYYY-MM". Its reference date is the month's last day. */
 export type YearMonth = string;
+
+export function isYearMonth(raw: unknown): raw is YearMonth {
+  return typeof raw === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw);
+}
 
 /**
  * The values recorded for one month. Holdings (and Accounts) left out keep their latest
@@ -220,7 +230,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 export function createEmptyDocument(): WealthDocument {
   return {

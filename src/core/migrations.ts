@@ -50,6 +50,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     categorizationRules: [],
     transactions: (document.transactions as object[]).map((t) => ({ ...t, ruleCategoryId: null })),
   }),
+  // 9 → 10: starting and closing months of Holdings and Accounts (all open, from the start).
+  9: (document) => ({
+    ...document,
+    schemaVersion: 10,
+    accounts: (document.accounts as object[]).map((a) => ({ ...a, closingMonth: null })),
+    holdings: (document.holdings as object[]).map((h) => ({ ...h, startMonth: null, closingMonth: null })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

@@ -8,6 +8,8 @@ import type {
   WealthDocument,
   YearMonth,
 } from "./document";
+import { isYearMonth } from "./document";
+import { accountIsOpen, holdingIsActive } from "./closing";
 import { fail, type Result } from "./result";
 import { valuationOfAccount, valuationOfHolding, type Valuation } from "./structure";
 
@@ -21,6 +23,8 @@ export type SnapshotInput = {
 };
 
 const WRONG_MODE_HOLDING = "Für dieses Konto wird in diesem Monat der Kontostand gesamt erfasst, nicht pro Position.";
+const NOT_ACTIVE_HOLDING = "Diese Position ist in diesem Monat geschlossen oder beginnt erst später.";
+const ACCOUNT_CLOSED = "Dieses Konto ist in diesem Monat schon geschlossen.";
 const WRONG_MODE_ACCOUNT = "Für dieses Konto werden in diesem Monat Werte pro Position erfasst, kein Kontostand gesamt.";
 
 /** Whether `account` takes one Account-level value in `month` (it switches to per Holding later). */
@@ -67,12 +71,17 @@ export function saveSnapshot(document: WealthDocument, input: SnapshotInput): Re
     holdingValues.push({ holdingId: v.holdingId, marketValue: v.marketValue, contribution });
   }
   for (const v of holdingValues) {
-    const accountId = document.holdings.find((h) => h.id === v.holdingId)!.accountId;
-    if (isAccountLevelMonth(accountOf(document, accountId), input.month)) {
+    const holding = document.holdings.find((h) => h.id === v.holdingId)!;
+    if (!accountIsOpen(accountOf(document, holding.accountId), input.month)) return fail("account-closed", ACCOUNT_CLOSED);
+    if (isAccountLevelMonth(accountOf(document, holding.accountId), input.month)) {
       return fail("account-level-month", WRONG_MODE_HOLDING);
+    }
+    if (!holdingIsActive(holding, input.month)) {
+      return fail("holding-not-active", NOT_ACTIVE_HOLDING);
     }
   }
   for (const v of accountValues) {
+    if (!accountIsOpen(accountOf(document, v.accountId), input.month)) return fail("account-closed", ACCOUNT_CLOSED);
     if (!isAccountLevelMonth(accountOf(document, v.accountId), input.month)) {
       return fail("per-holding-month", WRONG_MODE_ACCOUNT);
     }
@@ -122,10 +131,6 @@ export function setPerHoldingFrom(
 
 function accountOf(document: WealthDocument, accountId: string): Account {
   return document.accounts.find((a) => a.id === accountId)!;
-}
-
-function isYearMonth(raw: unknown): raw is YearMonth {
-  return typeof raw === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw);
 }
 
 /** One Holding's value in a month: recorded that month, or carried forward (notUpdated). */
@@ -214,8 +219,10 @@ class CarryForward {
       if (snapshot.month === month) current = snapshot;
     }
     const values: MonthValues = { holdings: [], accounts: [], valued: [] };
+    const open = new Set(document.accounts.filter((a) => accountIsOpen(a, month)).map((a) => a.id));
     const accountLevel = new Set(document.accounts.filter((a) => isAccountLevelMonth(a, month)).map((a) => a.id));
     for (const accountId of accountLevel) {
+      if (!open.has(accountId)) continue;
       const value = this.latestAccount.get(accountId);
       if (!value) continue;
       const own = current?.accountValues.some((v) => v.accountId === accountId) ?? false;
@@ -223,7 +230,7 @@ class CarryForward {
       values.valued.push({ valuation: valuationOfAccount(document, accountId), marketValue: value.marketValue });
     }
     for (const holding of document.holdings) {
-      if (accountLevel.has(holding.accountId)) continue;
+      if (accountLevel.has(holding.accountId) || !open.has(holding.accountId) || !holdingIsActive(holding, month)) continue;
       const own = current?.holdingValues.find((v) => v.holdingId === holding.id);
       const value = own ?? this.latestHolding.get(holding.id);
       if (!value) continue;
@@ -287,6 +294,8 @@ export type SnapshotForm = {
   exists: boolean;
   /** Net worth of the previous month, null if nothing was recorded before. */
   previousNetWorth: number | null;
+  /** Whether any Holding exists, open in this month or not (institutions lists only the open ones). */
+  hasHoldings: boolean;
   institutions: { id: string; name: string; accounts: SnapshotFormAccount[] }[];
 };
 
@@ -303,6 +312,14 @@ export function snapshotForm(document: WealthDocument, month: YearMonth, today?:
   const recordedAccount = new Map((current?.accountValues ?? []).map((v) => [v.accountId, v]));
   const hasPrevious = document.snapshots.some((s) => s.month < month);
   const todayMonth = today?.slice(0, 7);
+
+  /** Closed Accounts, and per-Holding Accounts whose Holdings are all closed or not yet started, are hidden. */
+  const shownInForm = (account: Account): boolean => {
+    if (!accountIsOpen(account, month)) return false;
+    if (isAccountLevelMonth(account, month)) return true;
+    const holdings = document.holdings.filter((h) => h.accountId === account.id);
+    return holdings.length === 0 || holdings.some((h) => holdingIsActive(h, month));
+  };
 
   const formAccount = (account: Account): SnapshotFormAccount => {
     const base = { id: account.id, name: account.name, isDebt: account.isDebt, perHoldingFrom: account.perHoldingFrom };
@@ -328,7 +345,7 @@ export function snapshotForm(document: WealthDocument, month: YearMonth, today?:
     return {
       ...base,
       accountValue: null,
-      holdings: holdings.map((holding) => {
+      holdings: holdings.filter((holding) => holdingIsActive(holding, month)).map((holding) => {
         const own = recorded.get(holding.id);
         const previousValue = previousHolding.get(holding.id) ?? null;
         return {
@@ -352,11 +369,14 @@ export function snapshotForm(document: WealthDocument, month: YearMonth, today?:
     month,
     exists: current !== undefined,
     previousNetWorth: hasPrevious ? netWorthOf(previous) : null,
-    institutions: document.institutions.map((institution) => ({
-      id: institution.id,
-      name: institution.name,
-      accounts: document.accounts.filter((a) => a.institutionId === institution.id).map(formAccount),
-    })),
+    hasHoldings: document.holdings.length > 0,
+    institutions: document.institutions.flatMap((institution) => {
+      const all = document.accounts.filter((a) => a.institutionId === institution.id);
+      const shown = all.filter(shownInForm);
+      // An Institution whose Accounts are all closed is hidden too.
+      if (all.length > 0 && shown.length === 0) return [];
+      return [{ id: institution.id, name: institution.name, accounts: shown.map(formAccount) }];
+    }),
   };
 }
 

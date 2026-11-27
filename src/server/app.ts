@@ -4,6 +4,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import {
   accountDetail,
+  closeAccount,
+  closeHolding,
   contributionSplit,
   confirmImport,
   createCategory,
@@ -257,6 +259,8 @@ export function createApp(initialConfig: AppConfig): Server {
     "POST /api/accounts/update": command(updateAccount),
     "POST /api/holdings/create": command(createHolding),
     "POST /api/holdings/update": command(updateHolding),
+    "POST /api/holdings/close": command(closeHolding),
+    "POST /api/accounts/close": command(closeAccount),
 
     // Monatsstand (Snapshots). `today` is the server's local date, passed into the core.
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),

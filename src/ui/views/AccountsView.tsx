@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import { ASSET_CLASSES, type AccountView, type Classification, type HoldingView, type InstitutionView } from "../../core";
 import { api, ApiError, type Structure } from "../api";
+import { formatMonth } from "../format";
 import { ASSET_CLASS_LABELS, formatClassification, LIQUIDITY_LABELS } from "../labels";
 
 /**
@@ -88,6 +89,7 @@ function AccountSection({ account, onChange, onOpen }: { account: AccountView; o
       <header className="row">
         <h3 id={headingId}>{account.name}</h3>
         {account.isDebt && <span className="badge">Schulden</span>}
+        {account.closingMonth && <span className="badge">Geschlossen ab {formatMonth(account.closingMonth)}</span>}
         <button type="button" className="secondary" onClick={onOpen}>
           Konto ansehen
         </button>
@@ -99,6 +101,11 @@ function AccountSection({ account, onChange, onOpen }: { account: AccountView; o
         {account.iban && <>IBAN: {account.iban} · </>}
         Standardeinordnung: {formatClassification(account.defaultClassification)}
       </p>
+      <Closing
+        what="Konto"
+        closingMonth={account.closingMonth}
+        onClose={(month) => api.closeAccount({ accountId: account.id, month }).then(onChange)}
+      />
       {editing && (
         <AccountForm
           label="Konto bearbeiten"
@@ -124,6 +131,7 @@ function AccountSection({ account, onChange, onOpen }: { account: AccountView; o
         submitLabel="Position anlegen"
         initialClassification={account.defaultClassification}
         onSubmit={(input) => api.createHolding({ ...input, accountId: account.id }).then(onChange)}
+        withStartMonth
       />
     </section>
   );
@@ -136,6 +144,8 @@ function HoldingItem({ holding, onChange }: { holding: HoldingView; onChange: On
       <div className="row">
         <span>
           <strong>{holding.name}</strong> · {formatClassification(holding.classification)}
+          {holding.startMonth && <> · Beginn {formatMonth(holding.startMonth)}</>}
+          {holding.closingMonth && <> · Geschlossen ab {formatMonth(holding.closingMonth)}</>}
         </span>
         <button type="button" className="secondary" onClick={() => setEditing(!editing)}>
           Position bearbeiten
@@ -147,6 +157,8 @@ function HoldingItem({ holding, onChange }: { holding: HoldingView; onChange: On
           submitLabel="Speichern"
           initialName={holding.name}
           initialClassification={holding.classification}
+          initialStartMonth={holding.startMonth}
+          withStartMonth
           onSubmit={(input) =>
             api.updateHolding({ ...input, id: holding.id }).then((r) => {
               onChange(r);
@@ -155,7 +167,69 @@ function HoldingItem({ holding, onChange }: { holding: HoldingView; onChange: On
           }
         />
       )}
+      <Closing
+        what="Position"
+        closingMonth={holding.closingMonth}
+        onClose={(month) => api.closeHolding({ holdingId: holding.id, month }).then(onChange)}
+      />
     </li>
+  );
+}
+
+/**
+ * Closing a Konto or Position as of a month: it leaves that and every later Monatsstand,
+ * its history stays. A closed one can be reopened.
+ */
+function Closing(props: {
+  what: "Konto" | "Position";
+  closingMonth: string | null;
+  onClose: (month: string | null) => Promise<unknown>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const label = `${props.what} schließen`;
+  async function reopen() {
+    try {
+      await props.onClose(null);
+      setError(null);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      setError(e.message);
+    }
+  }
+  if (props.closingMonth) {
+    return (
+      <div className="row">
+        <button type="button" className="secondary" onClick={reopen}>
+          Wieder öffnen
+        </button>
+        {error && <p role="alert">{error}</p>}
+      </div>
+    );
+  }
+  if (!open) {
+    return (
+      <button type="button" className="secondary" onClick={() => setOpen(true)}>
+        {label}
+      </button>
+    );
+  }
+  return (
+    <CommandForm
+      label={label}
+      submitLabel="Schließen"
+      onSubmit={() => props.onClose(month || null)}
+      onSuccess={() => {
+        setOpen(false);
+        setMonth("");
+      }}
+    >
+      <label>
+        Geschlossen ab
+        <input type="month" value={month} required onChange={(e) => setMonth(e.target.value)} />
+      </label>
+    </CommandForm>
   );
 }
 
@@ -262,18 +336,25 @@ function HoldingForm(props: {
   submitLabel: string;
   initialName?: string;
   initialClassification: Classification;
-  onSubmit: (input: { name: string; classification: Classification }) => Promise<unknown>;
+  initialStartMonth?: string | null;
+  /** Offer the optional Beginn field (the Holding's starting month). */
+  withStartMonth?: boolean;
+  onSubmit: (input: { name: string; classification: Classification; startMonth?: string | null }) => Promise<unknown>;
 }) {
   const [name, setName] = useState(props.initialName ?? "");
   const [classification, setClassification] = useState(props.initialClassification);
+  const [startMonth, setStartMonth] = useState(props.initialStartMonth ?? "");
   return (
     <CommandForm
       label={props.label}
       submitLabel={props.submitLabel}
-      onSubmit={() => props.onSubmit({ name, classification })}
+      onSubmit={() =>
+        props.onSubmit({ name, classification, ...(props.withStartMonth ? { startMonth: startMonth || null } : {}) })
+      }
       onSuccess={() => {
         setName(props.initialName ?? "");
         setClassification(props.initialClassification);
+        setStartMonth(props.initialStartMonth ?? "");
       }}
     >
       <label>
@@ -281,6 +362,12 @@ function HoldingForm(props: {
         <input value={name} onChange={(e) => setName(e.target.value)} />
       </label>
       <ClassificationFields value={classification} onChange={setClassification} />
+      {props.withStartMonth && (
+        <label>
+          Beginn
+          <input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} />
+        </label>
+      )}
     </CommandForm>
   );
 }
