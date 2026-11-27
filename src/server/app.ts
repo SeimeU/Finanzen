@@ -35,6 +35,7 @@ import {
   createHolding,
   createInstitution,
   currentOverview,
+  maturityTimeline,
   listStructure,
   loadDocument,
   netWorthSeries,
@@ -271,6 +272,8 @@ export function createApp(initialConfig: AppConfig): Server {
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
     // Start screen headline figures and current breakdowns (ticket 09).
     "GET /api/overview": async () => (session ? ok({ overview: currentOverview(session.document) }) : locked()),
+    "GET /api/maturities": async () =>
+      session ? ok({ timeline: maturityTimeline(session.document, localToday()) }) : locked(),
     // Konto detail and Einzahlung vs market change (ticket 11).
     "POST /api/accounts/detail": async ({ id }) => {
       if (!session) return locked();

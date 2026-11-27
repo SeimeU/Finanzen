@@ -4,6 +4,7 @@ import { AccountDetailView } from "./views/AccountDetailView";
 import { AccountsView } from "./views/AccountsView";
 import { CategoriesView } from "./views/CategoriesView";
 import { InboxView } from "./views/InboxView";
+import { MaturitiesView } from "./views/MaturitiesView";
 import { NotesView } from "./views/NotesView";
 import { RulesView } from "./views/RulesView";
 import { ImportView } from "./views/ImportView";
@@ -20,6 +21,7 @@ import { TransfersView } from "./views/TransfersView";
 const VIEWS = {
   start: "Übersicht",
   snapshot: "Monatsstand",
+  maturities: "Fälligkeiten",
   notes: "Notizen & Ereignisse",
   transactions: "Umsätze",
   inbox: "Nicht kategorisiert",
@@ -81,6 +83,7 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
         <>
           {view === "start" && <StartView onOpenAccount={setOpenAccountId} />}
           {view === "snapshot" && <SnapshotView />}
+          {view === "maturities" && <MaturitiesView />}
           {view === "notes" && <NotesView />}
           {view === "transactions" && <TransactionsView />}
           {view === "inbox" && <InboxView />}
