@@ -7,6 +7,7 @@ import {
   createHolding,
   createInstitution,
   maturityTimeline,
+  setPerHoldingFrom,
   saveSnapshot,
   type Classification,
   type Result,
@@ -214,6 +215,36 @@ describe("maturityTimeline", () => {
 
     expect(timeline.entries.map((e) => e.holdingName)).toEqual(["Festgeld 2030"]);
     expect(timeline.next).toEqual({ maturityDate: "2030-06-30", amount: 1_000_000 });
+  });
+
+  it("lists an Account Locked via its Default classification and valued as a whole, with its Account-level value", () => {
+    const s = setup();
+    // The pension is recorded as one Kontostand gesamt until 2027: its Holding has no value of its own.
+    let document = must(setPerHoldingFrom(s.document, { accountId: s.pensionAccount, month: "2027-01" })).document;
+    document = save(document, "2026-09", {
+      holdingValues: [{ holdingId: s.early, marketValue: 500_000 }],
+      accountValues: [{ accountId: s.pensionAccount, marketValue: 2_000_000 }],
+    });
+
+    const timeline = maturityTimeline(document, TODAY);
+
+    expect(timeline.entries.map((e) => [e.holdingName, e.accountName, e.maturityDate, e.marketValue])).toEqual([
+      ["Festgeld 2027", "Festgeld", "2027-03-31", 500_000],
+      ["Festgeld 2030", "Festgeld", "2030-06-30", null],
+      [null, "Pensionsvorsorge", "2055-01-01", 2_000_000],
+    ]);
+    expect(timeline.entries.at(-1)).toMatchObject({ holdingId: null, accountId: s.pensionAccount, matured: false });
+    expect(maturityTimeline(document, "2055-01-02").entries.at(-1)!.matured).toBe(true);
+  });
+
+  it("an Account valued as a whole under an Available Default classification has nothing Locked to list", () => {
+    const s = setup();
+    const spar = must(createAccount(s.document, { institutionId: "i1", name: "Bauspar", defaultClassification: CASH }));
+    const bauspar = must(createHolding(spar.document, { accountId: spar.id, name: "Bausparvertrag", classification: locked("2028-12-31") }));
+    let document = must(setPerHoldingFrom(bauspar.document, { accountId: spar.id, month: "2027-01" })).document;
+    document = save(document, "2026-09", { accountValues: [{ accountId: spar.id, marketValue: 80_000 }] });
+
+    expect(maturityTimeline(document, TODAY).entries.map((e) => e.accountName)).not.toContain("Bauspar");
   });
 
   it("still lists a Holding whose closing month is after today's month", () => {

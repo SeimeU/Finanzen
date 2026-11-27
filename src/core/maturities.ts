@@ -1,12 +1,15 @@
 import { accountIsOpen } from "./closing";
-import type { Holding, WealthDocument, YearMonth } from "./document";
-import { netWorthSeries } from "./snapshots";
-import { isMatured, valuationOfHolding } from "./structure";
+import type { Account, Holding, WealthDocument, YearMonth } from "./document";
+import { isAccountLevelMonth, netWorthSeries } from "./snapshots";
+import { isMatured, valuationOfAccount, valuationOfHolding } from "./structure";
 
-/** One Locked Holding on the maturity timeline. */
+/**
+ * One entry on the maturity timeline: a Locked Holding, or an Account Locked via its Default
+ * classification while it is valued as a whole (Kontostand gesamt; `holdingId`/`holdingName` null).
+ */
 export type MaturityEntry = {
-  holdingId: string;
-  holdingName: string;
+  holdingId: string | null;
+  holdingName: string | null;
   accountId: string;
   accountName: string;
   /** "YYYY-MM-DD". */
@@ -30,25 +33,51 @@ export type NextMaturity = {
   amount: number;
 };
 
-/** The open Locked Holdings ordered by Maturity date, with their latest Market value. `today` is "YYYY-MM-DD". */
+/**
+ * The open Locked Holdings and Accounts ordered by Maturity date, with their latest Market value.
+ * An Account valued as a whole in the latest month (Account-level values) counts as one entry under
+ * its Default classification, as in Net worth; its Holdings have no values of their own then.
+ * `today` is "YYYY-MM-DD".
+ */
 export function maturityTimeline(document: WealthDocument, today: string): MaturityTimeline {
+  const todayMonth = today.slice(0, 7);
   const latest = netWorthSeries(document).at(-1);
-  const entries = document.holdings
-    .filter((holding) => isOpenLocked(document, holding, today.slice(0, 7)))
+  const valuedAsWhole = (account: Account) => isAccountLevelMonth(account, latest?.month ?? todayMonth);
+  const accountName = (accountId: string) => document.accounts.find((a) => a.id === accountId)!.name;
+  const holdingEntries = document.holdings
+    .filter((holding) => isOpenLocked(document, holding, todayMonth))
+    .filter((holding) => !valuedAsWhole(document.accounts.find((a) => a.id === holding.accountId)!))
     .map((holding): MaturityEntry => {
       const value = latest?.holdings.find((v) => v.holdingId === holding.id);
-      const maturityDate = holding.classification.maturityDate!;
       return {
         holdingId: holding.id,
         holdingName: holding.name,
         accountId: holding.accountId,
-        accountName: document.accounts.find((a) => a.id === holding.accountId)!.name,
-        maturityDate,
+        accountName: accountName(holding.accountId),
+        maturityDate: holding.classification.maturityDate!,
         marketValue: value ? valuationOfHolding(document, holding.id).sign * value.marketValue : null,
         matured: isMatured(holding.classification, today),
       };
-    })
-    .sort((a, b) => (a.maturityDate < b.maturityDate ? -1 : a.maturityDate > b.maturityDate ? 1 : 0));
+    });
+  const accountEntries = document.accounts
+    .filter((account) => account.defaultClassification.liquidity === "locked" && accountIsOpen(account, todayMonth))
+    .filter(valuedAsWhole)
+    .map((account): MaturityEntry => {
+      const value = latest?.accounts.find((v) => v.accountId === account.id);
+      return {
+        holdingId: null,
+        holdingName: null,
+        accountId: account.id,
+        accountName: account.name,
+        maturityDate: account.defaultClassification.maturityDate!,
+        marketValue: value ? valuationOfAccount(document, account.id).sign * value.marketValue : null,
+        matured: isMatured(account.defaultClassification, today),
+      };
+    });
+  // Stable sort: equal dates keep document order, Holdings before Accounts.
+  const entries = [...holdingEntries, ...accountEntries].sort((a, b) =>
+    a.maturityDate < b.maturityDate ? -1 : a.maturityDate > b.maturityDate ? 1 : 0,
+  );
   const nextDate = entries.find((e) => !e.matured)?.maturityDate;
   const next =
     nextDate === undefined

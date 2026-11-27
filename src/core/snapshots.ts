@@ -28,7 +28,7 @@ const ACCOUNT_CLOSED = "Dieses Konto ist in diesem Monat schon geschlossen.";
 const WRONG_MODE_ACCOUNT = "Für dieses Konto werden in diesem Monat Werte pro Position erfasst, kein Kontostand gesamt.";
 
 /** Whether `account` takes one Account-level value in `month` (it switches to per Holding later). */
-function isAccountLevelMonth(account: Account, month: YearMonth): boolean {
+export function isAccountLevelMonth(account: Account, month: YearMonth): boolean {
   return account.perHoldingFrom !== null && month < account.perHoldingFrom;
 }
 

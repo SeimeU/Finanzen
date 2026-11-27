@@ -33,12 +33,12 @@ export function MaturitiesView() {
           </thead>
           <tbody>
             {timeline.entries.map((e) => (
-              <tr key={e.holdingId} className={e.matured ? "matured" : undefined}>
+              <tr key={e.holdingId ?? e.accountId} className={e.matured ? "matured" : undefined}>
                 <td>
                   {formatDate(e.maturityDate)}
                   {e.matured && <span className="badge"> fällig</span>}
                 </td>
-                <td>{e.holdingName}</td>
+                <td>{e.holdingName ?? "Kontostand gesamt"}</td>
                 <td>{e.accountName}</td>
                 <td className="amount">{e.marketValue === null ? "–" : formatEur(e.marketValue)}</td>
               </tr>
