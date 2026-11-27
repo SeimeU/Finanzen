@@ -207,8 +207,8 @@ describe("Transfer suggestions by amount", () => {
     const [suggestion] = transferSuggestions(document);
     expect(suggested(document)).toEqual(["Sparen November → Einzahlung"]);
     expect(suggestion).toMatchObject({
-      outgoing: { accountId: elba, bookingDate: "2026-11-02", amountCents: -50000 },
-      incoming: { accountId: tr, bookingDate: "2026-11-04", amountCents: 50000 },
+      outgoing: { accountId: elba, date: "2026-11-02", amountCents: -50000 },
+      incoming: { accountId: tr, date: "2026-11-04", amountCents: 50000 },
     });
     // Until accepted, both still count as ordinary Transactions.
     expect(kinds(document)["Einzahlung"]).toBe("uncategorized (unknown)");

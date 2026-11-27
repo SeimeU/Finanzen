@@ -47,7 +47,7 @@ export function previewImport(
         ? file.accountId
         : suggestAccount(document, file.name, read.profile);
     const { fresh } = splitDuplicates(document.transactions, accountId, read.transactions);
-    const dates = read.transactions.map((t) => t.bookingDate).sort();
+    const dates = read.transactions.map((t) => t.date).sort();
     return {
       name: file.name,
       ok: true,
@@ -104,7 +104,7 @@ export function confirmImport(
       transferMark: null,
       transferPartnerId: null,
     }));
-    const dates = read.transactions.map((t) => t.bookingDate).sort();
+    const dates = read.transactions.map((t) => t.date).sort();
     const record: ImportRecord = {
       id: importId,
       coveredFrom: dates[0]!.slice(0, 7),
@@ -216,8 +216,8 @@ function splitDuplicates(
   return { fresh, duplicateCount: incoming.length - fresh.length };
 }
 
-function duplicateKey(t: Pick<Transaction, "bookingDate" | "amountCents" | "counterpartyName" | "purpose">): string {
-  return [t.bookingDate, t.amountCents, normalizeText(`${t.counterpartyName} ${t.purpose}`)].join("|");
+function duplicateKey(t: Pick<Transaction, "date" | "amountCents" | "counterpartyName" | "purpose">): string {
+  return [t.date, t.amountCents, normalizeText(`${t.counterpartyName} ${t.purpose}`)].join("|");
 }
 
 function normalizeText(text: string): string {

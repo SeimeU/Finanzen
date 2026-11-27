@@ -15,7 +15,7 @@ const DECIMALS: { value: GenericProfileSettings["decimalSeparator"]; label: stri
   { value: ".", label: "Punkt (1,234.56)" },
 ];
 const FIELDS: { key: keyof GenericColumnMapping; label: string; optional?: boolean }[] = [
-  { key: "bookingDate", label: "Datum" },
+  { key: "date", label: "Datum" },
   { key: "amount", label: "Betrag" },
   { key: "counterpartyName", label: "Gegenüber" },
   { key: "purpose", label: "Verwendungszweck" },
@@ -29,7 +29,7 @@ const INITIAL: GenericProfileSettings = {
   dateFormat: "DD.MM.YYYY",
   decimalSeparator: ",",
   columns: {
-    bookingDate: null,
+    date: null,
     amount: null,
     counterpartyName: null,
     purpose: null,
@@ -216,7 +216,7 @@ export function ImportProfileSetup({
               <tbody>
                 {preview.result.transactions.map((t, i) => (
                   <tr key={i}>
-                    <td>{formatDate(t.bookingDate)}</td>
+                    <td>{formatDate(t.date)}</td>
                     <td className="amount">{formatEur(t.amountCents)}</td>
                     <td>{t.counterpartyName}</td>
                     <td>{t.purpose}</td>

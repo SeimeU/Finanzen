@@ -79,7 +79,7 @@ describe("confirming an import", () => {
     expect(files).toEqual([{ name: "tr.csv", importId: expect.any(String), newCount: 6, duplicateCount: 0 }]);
 
     const found = searchTransactions(next);
-    expect(found.map((t) => [t.bookingDate, t.amountCents, t.origin.type])).toEqual([
+    expect(found.map((t) => [t.date, t.amountCents, t.origin.type])).toEqual([
       ["2026-05-20", -20000, "TRANSFER_OUTBOUND"],
       ["2026-05-15", 1240, "DISTRIBUTION"],
       ["2026-05-03", -2346, "CARD_TRANSACTION"],
@@ -91,7 +91,7 @@ describe("confirming an import", () => {
       id: expect.any(String),
       accountId,
       importId: files[0]!.importId,
-      bookingDate: "2026-05-20",
+      date: "2026-05-20",
       amountCents: -20000,
       counterpartyName: "Max Mustermann",
       counterpartyIban: "AT611904300234573201",
@@ -105,7 +105,7 @@ describe("confirming an import", () => {
         taxCents: null,
         securityName: null,
         isin: null,
-        bookingText: null,
+        rawText: null,
         valueDate: null,
       },
       manualCategoryId: null,
@@ -354,12 +354,12 @@ describe("transaction search", () => {
 
   it("filters by Account", () => {
     const { document, other } = imported();
-    expect(searchTransactions(document, { accountId: other }).map((t) => t.bookingDate)).toEqual(["2026-06-02", "2026-06-01"]);
+    expect(searchTransactions(document, { accountId: other }).map((t) => t.date)).toEqual(["2026-06-02", "2026-06-01"]);
   });
 
   it("filters by an inclusive date range", () => {
     const { document } = imported();
-    expect(searchTransactions(document, { from: "2026-05-03", to: "2026-05-20" }).map((t) => t.bookingDate)).toEqual([
+    expect(searchTransactions(document, { from: "2026-05-03", to: "2026-05-20" }).map((t) => t.date)).toEqual([
       "2026-05-20",
       "2026-05-15",
       "2026-05-03",

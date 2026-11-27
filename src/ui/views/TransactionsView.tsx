@@ -106,7 +106,7 @@ export function TransactionsView() {
           <tbody>
             {transactions.map((t) => (
               <tr key={t.id}>
-                <td>{formatDate(t.bookingDate)}</td>
+                <td>{formatDate(t.date)}</td>
                 <td>{accountLabel(t.accountId)}</td>
                 <td>
                   {t.counterpartyName}

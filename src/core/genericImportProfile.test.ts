@@ -47,7 +47,7 @@ const SEMICOLON_SETTINGS: GenericProfileSettings = {
   skipLines: 2,
   dateFormat: "DD.MM.YYYY",
   decimalSeparator: ",",
-  columns: { bookingDate: 0, amount: 1, counterpartyName: 2, purpose: 3, counterpartyIban: 4, paymentReference: 5 },
+  columns: { date: 0, amount: 1, counterpartyName: 2, purpose: 3, counterpartyIban: 4, paymentReference: 5 },
 };
 
 describe("generic Import profiles", () => {
@@ -71,7 +71,7 @@ describe("generic Import profiles", () => {
 
     const imported = must(confirmImport(saved.document, { importedAt: IMPORTED_AT, files: [{ name: "erste.csv", bytes: utf8(later), accountId: giro }] }));
     const found = searchTransactions(imported.document);
-    expect(found.map((t) => [t.bookingDate, t.amountCents, t.counterpartyName, t.purpose, t.counterpartyIban, t.paymentReference])).toEqual([
+    expect(found.map((t) => [t.date, t.amountCents, t.counterpartyName, t.purpose, t.counterpartyIban, t.paymentReference])).toEqual([
       ["2026-05-20", -1230, "Billa", "Einkauf", null, ""],
       ["2026-05-15", 250000, "Arbeitgeber GmbH", "Gehalt", null, ""],
       ["2026-05-03", -123456, "Hausverwaltung", "Miete; Mai", "AT611904300234573201", "RF18"],
@@ -91,7 +91,7 @@ describe("generic Import profiles", () => {
     expect(suggested(imported.document, "erste.csv")).toBe(savings);
     expect(suggested(imported.document, "andere.csv")).toBe(giro);
     expect(suggested(imported.document, "erste.csv", giro)).toBe(giro);
-    expect(searchTransactions(imported.document)[0]!.origin).toMatchObject({ bookingText: null, valueDate: null });
+    expect(searchTransactions(imported.document)[0]!.origin).toMatchObject({ rawText: null, valueDate: null });
   });
 
   it("reads a headerless comma file with decimal points and ISO dates, recognized by its column count", () => {
@@ -102,11 +102,11 @@ describe("generic Import profiles", () => {
       skipLines: 0,
       dateFormat: "YYYY-MM-DD",
       decimalSeparator: ".",
-      columns: { bookingDate: 0, amount: 1, counterpartyName: 2, purpose: 3, counterpartyIban: null, paymentReference: null },
+      columns: { date: 0, amount: 1, counterpartyName: 2, purpose: 3, counterpartyIban: null, paymentReference: null },
     };
     const saved = must(saveImportProfile(document, { accountId: savings, settings, sample: utf8(csv) }));
     const imported = must(confirmImport(saved.document, { importedAt: IMPORTED_AT, files: [{ name: "a.csv", bytes: utf8(csv), accountId: savings }] }));
-    expect(searchTransactions(imported.document).map((t) => [t.bookingDate, t.amountCents, t.purpose])).toEqual([
+    expect(searchTransactions(imported.document).map((t) => [t.date, t.amountCents, t.purpose])).toEqual([
       ["2026-06-02", -350, "Kauf, online"],
       ["2026-06-01", 125000, "Zinsgutschrift"],
     ]);
@@ -179,7 +179,7 @@ describe("previewing an Import profile while setting it up", () => {
     expect(preview.lines).toHaveLength(4);
     expect(preview.result).toMatchObject({ ok: true, transactionCount: 2 });
     if (!preview.result.ok) throw new Error();
-    expect(preview.result.transactions[0]).toMatchObject({ bookingDate: "2026-05-03", amountCents: -123456, purpose: "Miete; Mai" });
+    expect(preview.result.transactions[0]).toMatchObject({ date: "2026-05-03", amountCents: -123456, purpose: "Miete; Mai" });
   });
 
   it("explains what is wrong instead of rows when the settings do not fit yet", () => {

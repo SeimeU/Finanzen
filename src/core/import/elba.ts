@@ -33,15 +33,15 @@ function parse(text: string): ParseResult {
     if (!hasElbaShape(row)) {
       return failure("bad-row", `Zeile ${line} hat ${row.length} statt ${COLUMN_COUNT} Spalten. Es wurde nichts importiert.`);
     }
-    const [rawDate, bookingText, rawValueDate, rawAmount, currency] = row.map((cell) => cell.trim()) as [
+    const [rawDate, rawText, rawValueDate, rawAmount, currency] = row.map((cell) => cell.trim()) as [
       string,
       string,
       string,
       string,
       string,
     ];
-    const bookingDate = toIsoDate(rawDate);
-    if (bookingDate === null) {
+    const date = toIsoDate(rawDate);
+    if (date === null) {
       return failure("bad-row", `Zeile ${line}: „${rawDate}“ ist kein gültiges Datum. Es wurde nichts importiert.`);
     }
     const valueDate = rawValueDate === "" ? null : toIsoDate(rawValueDate);
@@ -58,13 +58,13 @@ function parse(text: string): ParseResult {
         `Zeile ${line}: Nur Euro wird unterstützt, nicht „${currency}“. Es wurde nichts importiert.`,
       );
     }
-    const fields = splitBookingText(bookingText);
+    const fields = splitRawText(rawText);
     // The counterparty is the payee of an outflow and the payer of an inflow; if the text
     // only names the other side, that one is used.
     const [preferred, other] = amountCents < 0 ? [fields.payee, fields.payer] : [fields.payer, fields.payee];
     const counterparty = preferred.name || preferred.iban ? preferred : other;
     transactions.push({
-      bookingDate,
+      date,
       amountCents,
       counterpartyName: counterparty.name,
       counterpartyIban: counterparty.iban === "" ? null : counterparty.iban.replace(/\s+/g, "").toUpperCase(),
@@ -78,7 +78,7 @@ function parse(text: string): ParseResult {
         taxCents: null,
         securityName: null,
         isin: null,
-        bookingText,
+        rawText,
         valueDate,
       },
     });
@@ -133,7 +133,7 @@ const KEY_PATTERN = new RegExp(
 type Party = { name: string; iban: string };
 
 /** The fields a Transaction needs, read from the packed Buchungstext. Missing keys give "". */
-function splitBookingText(text: string): {
+function splitRawText(text: string): {
   purpose: string;
   paymentReference: string;
   payer: Party;

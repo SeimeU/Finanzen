@@ -96,6 +96,21 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     schemaVersion: 15,
     transactions: (document.transactions as object[]).map((t) => ({ ...t, transferPartnerId: null })),
   }),
+  // 15 → 16: glossary names for stored fields: a Transaction's `date` (was bookingDate), the bank's
+  // raw text `origin.rawText` (was bookingText), and the generic Import profile's `columns.date`.
+  15: (document) => ({
+    ...document,
+    schemaVersion: 16,
+    transactions: (document.transactions as Record<string, unknown>[]).map(({ bookingDate, origin, ...t }) => {
+      const { bookingText, ...restOrigin } = (origin ?? {}) as Record<string, unknown>;
+      return { ...t, date: bookingDate, ...(origin === undefined ? {} : { origin: { ...restOrigin, rawText: bookingText ?? null } }) };
+    }),
+    importProfiles: (document.importProfiles as { columns?: Record<string, unknown> }[]).map((p) => {
+      if (!p.columns) return p;
+      const { bookingDate, ...columns } = p.columns;
+      return { ...p, columns: { date: bookingDate, ...columns } };
+    }),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

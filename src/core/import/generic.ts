@@ -19,14 +19,14 @@ import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
  */
 
 const COLUMN_LABELS: Record<keyof GenericColumnMapping, string> = {
-  bookingDate: "Datum",
+  date: "Datum",
   amount: "Betrag",
   counterpartyName: "Gegenüber",
   purpose: "Verwendungszweck",
   counterpartyIban: "IBAN",
   paymentReference: "Zahlungsreferenz",
 };
-const REQUIRED_COLUMNS = ["bookingDate", "amount", "counterpartyName", "purpose"] as const;
+const REQUIRED_COLUMNS = ["date", "amount", "counterpartyName", "purpose"] as const;
 const MAX_SKIP_LINES = 100;
 const PREVIEW_LINES = 10;
 const PREVIEW_TRANSACTIONS = 5;
@@ -190,11 +190,11 @@ function readText(
       return failure("bad-row", `Zeile ${line} hat ${cells.length} statt ${columnCount} Spalten. Es wurde nichts importiert.`);
     }
     const get = (index: number | null) => (index === null ? "" : cells[index]!.trim());
-    const bookingDate = toIsoDate(get(columns.bookingDate), settings.dateFormat);
-    if (!bookingDate) {
+    const date = toIsoDate(get(columns.date), settings.dateFormat);
+    if (!date) {
       return failure(
         "bad-row",
-        `Zeile ${line}: „${get(columns.bookingDate)}“ ist kein Datum im Format ${settings.dateFormat}. Es wurde nichts importiert.`,
+        `Zeile ${line}: „${get(columns.date)}“ ist kein Datum im Format ${settings.dateFormat}. Es wurde nichts importiert.`,
       );
     }
     const amountCents = toCents(get(columns.amount), settings.decimalSeparator);
@@ -203,13 +203,13 @@ function readText(
     }
     const iban = get(columns.counterpartyIban).replace(/\s+/g, "").toUpperCase();
     transactions.push({
-      bookingDate,
+      date,
       amountCents,
       counterpartyName: get(columns.counterpartyName),
       counterpartyIban: iban === "" ? null : iban,
       paymentReference: get(columns.paymentReference),
       purpose: get(columns.purpose),
-      origin: { category: null, type: null, transactionId: null, feeCents: null, taxCents: null, securityName: null, isin: null, bookingText: null, valueDate: null },
+      origin: { category: null, type: null, transactionId: null, feeCents: null, taxCents: null, securityName: null, isin: null, rawText: null, valueDate: null },
     });
   }
   return { ok: true, transactions, columnCount, header };

@@ -30,7 +30,7 @@ export type CategorySpendingRow = {
 };
 
 /** One counted Transaction: in which kind, under which Category (null: Uncategorized), how much (positive = in the kind's direction). */
-type Counted = { bookingDate: string; kind: CategoryKind; categoryId: string | null; amount: number };
+type Counted = { date: string; kind: CategoryKind; categoryId: string | null; amount: number };
 
 function counted(document: WealthDocument): Counted[] {
   return classifyTransactions(document, document.transactions).flatMap((t: ClassifiedTransaction): Counted[] => {
@@ -38,14 +38,14 @@ function counted(document: WealthDocument): Counted[] {
     if (c.cashFlow === "excluded") return [];
     if (c.kind === "category") {
       const amount = c.cashFlow === "expense" ? -t.amountCents : t.amountCents;
-      return [{ bookingDate: t.bookingDate, kind: c.cashFlow, categoryId: c.categoryId, amount }];
+      return [{ date: t.date, kind: c.cashFlow, categoryId: c.categoryId, amount }];
     }
     const kind: CategoryKind = t.amountCents < 0 ? "expense" : "income";
-    return [{ bookingDate: t.bookingDate, kind, categoryId: null, amount: Math.abs(t.amountCents) }];
+    return [{ date: t.date, kind, categoryId: null, amount: Math.abs(t.amountCents) }];
   });
 }
 
-const inPeriod = (bookingDate: string, period: Period) => bookingDate.startsWith(period);
+const inPeriod = (date: string, period: Period) => date.startsWith(period);
 
 /**
  * Spending (kind "expense") or income per Category in a month or year, largest first.
@@ -61,7 +61,7 @@ export function categorySpending(
   const hasChildren = new Set(document.categories.flatMap((c) => (c.parentId ? [c.parentId] : [])));
   const totals = new Map<string | null, number>();
   for (const t of counted(document)) {
-    if (t.kind !== input.kind || !inPeriod(t.bookingDate, input.period)) continue;
+    if (t.kind !== input.kind || !inPeriod(t.date, input.period)) continue;
     const key = rowKey(t.categoryId, input.parentId, byId);
     if (key === undefined) continue;
     totals.set(key, (totals.get(key) ?? 0) + t.amount);
@@ -102,10 +102,10 @@ export function categoryHistory(
   const totals = new Map<Period, number>();
   for (const t of all) {
     if (t.kind !== kind || !matches(t.categoryId)) continue;
-    const period = t.bookingDate.slice(0, length);
+    const period = t.date.slice(0, length);
     totals.set(period, (totals.get(period) ?? 0) + t.amount);
   }
-  const months = all.map((t) => t.bookingDate.slice(0, 7)).sort();
+  const months = all.map((t) => t.date.slice(0, 7)).sort();
   const periods: Period[] = [];
   if (input.by === "month") {
     for (let month = months[0]!; month <= months.at(-1)!; month = nextMonth(month)) periods.push(month);
@@ -138,7 +138,7 @@ export type CashFlowMonth = {
 export function cashFlowMonths(document: WealthDocument): CashFlowMonth[] {
   const all = counted(document);
   if (all.length === 0) return [];
-  const months = all.map((t) => t.bookingDate.slice(0, 7)).sort();
+  const months = all.map((t) => t.date.slice(0, 7)).sort();
   const coverage = coverageByAccount(document);
   const flagged = document.accounts.filter((a) => a.carriesCashFlow);
   const result: CashFlowMonth[] = [];
@@ -147,7 +147,7 @@ export function cashFlowMonths(document: WealthDocument): CashFlowMonth[] {
     let expenses = 0;
     let uncategorizedCount = 0;
     for (const t of all) {
-      if (!inPeriod(t.bookingDate, month)) continue;
+      if (!inPeriod(t.date, month)) continue;
       if (t.kind === "income") income += t.amount;
       else expenses += t.amount;
       if (t.categoryId === null) uncategorizedCount++;

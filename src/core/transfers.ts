@@ -33,13 +33,13 @@ export function transferSuggestions(document: WealthDocument): TransferSuggestio
   for (const outgoing of candidates) {
     if (outgoing.amountCents > 0) continue;
     for (const incoming of incomingByAmount.get(-outgoing.amountCents) ?? []) {
-      const gap = Math.abs(dayNumber(incoming.bookingDate) - dayNumber(outgoing.bookingDate));
+      const gap = Math.abs(dayNumber(incoming.date) - dayNumber(outgoing.date));
       if (incoming.accountId === outgoing.accountId || gap > MAX_DAYS_APART) continue;
       if (rejected.has(pairKey(outgoing.id, incoming.id))) continue;
       pairs.push({ outgoing, incoming, gap });
     }
   }
-  pairs.sort((a, b) => a.gap - b.gap || compare(a.outgoing.bookingDate, b.outgoing.bookingDate) || compare(a.outgoing.id, b.outgoing.id));
+  pairs.sort((a, b) => a.gap - b.gap || compare(a.outgoing.date, b.outgoing.date) || compare(a.outgoing.id, b.outgoing.id));
   const used = new Set<string>();
   const chosen: TransferSuggestion[] = [];
   for (const { outgoing, incoming } of pairs) {
@@ -47,7 +47,7 @@ export function transferSuggestions(document: WealthDocument): TransferSuggestio
     used.add(outgoing.id).add(incoming.id);
     chosen.push({ outgoing, incoming });
   }
-  return chosen.sort((a, b) => compare(b.outgoing.bookingDate, a.outgoing.bookingDate));
+  return chosen.sort((a, b) => compare(b.outgoing.date, a.outgoing.date));
 }
 
 /** Accepts a current suggestion: both Transactions are marked as Transfers, as a pair. */

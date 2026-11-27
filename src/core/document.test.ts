@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(15);
+    expect(CURRENT_SCHEMA_VERSION).toBe(16);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -26,7 +26,7 @@ describe("data document", () => {
     delete v5.importAccountChoices;
     const result = loadDocument(v5);
     if (!result.ok) throw new Error(result.error.message);
-    expect(result.document.transactions[0]!.origin).toEqual({ ...origin, bookingText: null, valueDate: null });
+    expect(result.document.transactions[0]!.origin).toEqual({ ...origin, rawText: null, valueDate: null });
     expect(result.document.importAccountChoices).toEqual([]);
   });
 
@@ -51,7 +51,7 @@ describe("data document", () => {
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(result.document.importProfiles).toEqual([]);
-    expect(result.document.transactions[0]!.origin).toEqual({ ...origin, bookingText: null, valueDate: null });
+    expect(result.document.transactions[0]!.origin).toEqual({ ...origin, rawText: null, valueDate: null });
     expect(result.document.transactions[0]!.manualCategoryId).toBeNull();
     expect(result.document.transactions[0]!.ruleCategoryId).toBeNull();
     expect(result.document.transactions[0]!.transferMark).toBeNull();
@@ -88,6 +88,22 @@ describe("data document", () => {
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null, transferPartnerId: null }]);
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
+  });
+
+  it("a version 15 document's stored field names follow the glossary: a Transaction's date, the bank's raw text", () => {
+    const v15 = {
+      ...createEmptyDocument(),
+      schemaVersion: 15,
+      transactions: [{ id: "t1", bookingDate: "2026-03-05", origin: { type: null, bookingText: "Bezahlung Karte", valueDate: null } }],
+      importProfiles: [{ id: "ip1", columns: { bookingDate: 0, amount: 1, counterpartyName: 2, purpose: 3 } }],
+    };
+    const result = loadDocument(v15);
+    expect(result.ok && result.document.transactions).toEqual([
+      { id: "t1", date: "2026-03-05", origin: { type: null, rawText: "Bezahlung Karte", valueDate: null } },
+    ]);
+    expect(result.ok && result.document.importProfiles).toEqual([
+      { id: "ip1", columns: { date: 0, amount: 1, counterpartyName: 2, purpose: 3 } },
+    ]);
   });
 
   it("a version 14 document's Transactions belong to no Transfer pair", () => {

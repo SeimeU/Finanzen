@@ -81,7 +81,7 @@ describe("ELBA Transactions", () => {
     const { document: next } = importElba(document, fixture("elba-basic.csv"), elbaAccountId);
     const found = searchTransactions(next);
     expect(
-      found.map((t) => [t.bookingDate, t.amountCents, t.counterpartyName, t.counterpartyIban, t.paymentReference, t.purpose]),
+      found.map((t) => [t.date, t.amountCents, t.counterpartyName, t.counterpartyIban, t.paymentReference, t.purpose]),
     ).toEqual([
       ["2026-10-31", -790, "", null, "", "Kontoführung"],
       ["2026-10-15", -8410, "Wien Energie GmbH", "AT022011100000001234", "123456789", "Strom Oktober"],
@@ -94,9 +94,9 @@ describe("ELBA Transactions", () => {
   it("keeps the raw Buchungstext and the Valutadatum", () => {
     const { document, elbaAccountId } = withBothBanks();
     const { document: next } = importElba(document, fixture("elba-basic.csv"), elbaAccountId);
-    const card = searchTransactions(next).find((t) => t.bookingDate === "2026-10-05")!;
+    const card = searchTransactions(next).find((t) => t.date === "2026-10-05")!;
     expect(card.origin).toMatchObject({
-      bookingText: "Bezahlung Karte Kartenzahlung mit Kartenfolge-Nr.: 1 Empfänger: BILLA DANKT 1234 WIEN",
+      rawText: "Bezahlung Karte Kartenzahlung mit Kartenfolge-Nr.: 1 Empfänger: BILLA DANKT 1234 WIEN",
       valueDate: "2026-10-04",
       category: null,
       type: null,
@@ -112,7 +112,7 @@ describe("ELBA Transactions", () => {
       elbaRow({ date: "03.11.2026", amount: "-5,00", text: "Abbuchung Auftraggeber: Nur Zahler IBAN Auftraggeber: AT48 3200 0000 1234 5864" }),
     ].join("\n");
     const found = searchTransactions(importElba(document, utf8(text), elbaAccountId).document);
-    expect(found.map((t) => [t.bookingDate, t.counterpartyName, t.counterpartyIban])).toEqual([
+    expect(found.map((t) => [t.date, t.counterpartyName, t.counterpartyIban])).toEqual([
       ["2026-11-03", "Nur Zahler", "AT483200000012345864"],
       ["2026-11-02", "Ich Selbst", null],
       ["2026-11-01", "Vermieter", "AT611904300234573201"],

@@ -108,13 +108,13 @@ function categorizationRule(transaction: Transaction): Proposal | null {
  * Classification from the bank's own fields (`origin`), keyed by the Import profile
  * the Transaction was read with. Profiles without an entry fall through.
  */
-const BANK_MAPPINGS: Record<string, (origin: TransactionOrigin, amountCents: number) => Proposal | null> = {
-  "trade-republic": tradeRepublicMapping,
+const BANK_CLASSIFIERS: Record<string, (origin: TransactionOrigin, amountCents: number) => Proposal | null> = {
+  "trade-republic": tradeRepublicClassifier,
 };
 
 function bankClassification(transaction: Transaction, context: Context): Proposal | null {
-  const mapping = BANK_MAPPINGS[context.profileOf.get(transaction.importId) ?? ""];
-  return mapping ? mapping(transaction.origin, transaction.amountCents) : null;
+  const classifier = BANK_CLASSIFIERS[context.profileOf.get(transaction.importId) ?? ""];
+  return classifier ? classifier(transaction.origin, transaction.amountCents) : null;
 }
 
 /**
@@ -123,7 +123,7 @@ function bankClassification(transaction: Transaction, context: Context): Proposa
  * Kapitalerträge; any *TAX* type → Steuern. A *_CANCELLED row keeps its type's Category.
  * Transfer types, card payments and unknown types fall through (to rules, then the inbox).
  */
-function tradeRepublicMapping(origin: TransactionOrigin, amountCents: number): Proposal | null {
+function tradeRepublicClassifier(origin: TransactionOrigin, amountCents: number): Proposal | null {
   if (origin.category === "TRADING") return { kind: "trade", direction: amountCents < 0 ? "buy" : "sell" };
   const type = (origin.type ?? "").replace(/_CANCELLED$/, "");
   const bank = (categoryId: string): Proposal => ({ kind: "category", categoryId, source: "bank" });

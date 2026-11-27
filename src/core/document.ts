@@ -151,7 +151,7 @@ export type Transaction = {
   accountId: string;
   importId: string;
   /** "YYYY-MM-DD" */
-  bookingDate: string;
+  date: string;
   /** Signed EUR cents; outflows are negative. */
   amountCents: number;
   counterpartyName: string;
@@ -196,7 +196,7 @@ export type TransactionOrigin = {
   securityName: string | null;
   isin: string | null;
   /** ELBA: the raw Buchungstext the other fields were split from. */
-  bookingText: string | null;
+  rawText: string | null;
   /** ELBA: the Valutadatum, "YYYY-MM-DD". */
   valueDate: string | null;
 };
@@ -249,7 +249,7 @@ export const GENERIC_DECIMAL_SEPARATORS = [",", "."] as const;
 
 /** Zero-based column numbers; IBAN and payment reference are optional (null). */
 export type GenericColumnMapping = {
-  bookingDate: number | null;
+  date: number | null;
   amount: number | null;
   counterpartyName: number | null;
   purpose: number | null;
@@ -279,7 +279,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 15;
+export const CURRENT_SCHEMA_VERSION = 16;
 
 export function createEmptyDocument(): WealthDocument {
   return {

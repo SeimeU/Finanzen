@@ -97,7 +97,7 @@ function parse(text: string): ParseResult {
     }
     const iban = get("counterparty_iban").replace(/\s+/g, "").toUpperCase();
     transactions.push({
-      bookingDate: date,
+      date: date,
       amountCents,
       counterpartyName: get("counterparty_name"),
       counterpartyIban: iban === "" ? null : iban,
@@ -111,7 +111,7 @@ function parse(text: string): ParseResult {
         taxCents,
         securityName: get("name") || null,
         isin: get("symbol") || null,
-        bookingText: null,
+        rawText: null,
         valueDate: null,
       },
     });

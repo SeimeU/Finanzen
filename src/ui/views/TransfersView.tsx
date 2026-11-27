@@ -55,11 +55,11 @@ export function TransfersView() {
               <tr key={`${s.outgoing.id}-${s.incoming.id}`}>
                 <td className="amount">{formatEur(s.incoming.amountCents)}</td>
                 <td>
-                  {accountLabel(s.outgoing.accountId)}, {formatDate(s.outgoing.bookingDate)}
+                  {accountLabel(s.outgoing.accountId)}, {formatDate(s.outgoing.date)}
                   <div className="meta">{s.outgoing.purpose || s.outgoing.counterpartyName}</div>
                 </td>
                 <td>
-                  {accountLabel(s.incoming.accountId)}, {formatDate(s.incoming.bookingDate)}
+                  {accountLabel(s.incoming.accountId)}, {formatDate(s.incoming.date)}
                   <div className="meta">{s.incoming.purpose || s.incoming.counterpartyName}</div>
                 </td>
                 <td>

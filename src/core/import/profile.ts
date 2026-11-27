@@ -5,7 +5,7 @@ import type { TransactionOrigin } from "../document";
  * Amounts are signed integer cents in EUR (outflows negative).
  */
 export type ParsedTransaction = {
-  bookingDate: string;
+  date: string;
   amountCents: number;
   counterpartyName: string;
   counterpartyIban: string | null;
