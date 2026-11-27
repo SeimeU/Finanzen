@@ -2,8 +2,10 @@
 import type {
   AccountDetail,
   AccountInput,
+  CategorizationRule,
   CategoryKind,
   CategoryNode,
+  RuleInput,
   ContributionMonth,
   CurrentOverview,
   Classification,
@@ -11,10 +13,11 @@ import type {
   FilePreview,
   GenericProfileSettings,
   ImportProfilePreview,
-  HoldingInput,
+  NewHoldingInput,
   ImportedFile,
   ImportRecord,
   InstitutionView,
+  MaturityTimeline,
   MonthNotes,
   NetWorthMonth,
   Projection,
@@ -22,6 +25,7 @@ import type {
   SnapshotForm,
   SnapshotInput,
   TransactionFilter,
+  TransferSuggestion,
 } from "../core";
 
 export type AppState = "new" | "locked" | "unlocked";
@@ -63,9 +67,14 @@ export const api = {
   createAccount: (input: AccountInput) => call<Structure>("POST", "/api/accounts/create", input),
   updateAccount: (input: { id: string } & Omit<AccountInput, "institutionId">) =>
     call<Structure>("POST", "/api/accounts/update", input),
-  createHolding: (input: HoldingInput) => call<Structure>("POST", "/api/holdings/create", input),
-  updateHolding: (input: { id: string; name: string; classification: Classification }) =>
+  createHolding: (input: NewHoldingInput) => call<Structure>("POST", "/api/holdings/create", input),
+  updateHolding: (input: { id: string; name: string; classification: Classification; startMonth?: string | null }) =>
     call<Structure>("POST", "/api/holdings/update", input),
+  /** month: the first month the Holding no longer appears in; null reopens it. */
+  closeHolding: (input: { holdingId: string; month: string | null }) =>
+    call<Structure>("POST", "/api/holdings/close", input),
+  closeAccount: (input: { accountId: string; month: string | null }) =>
+    call<Structure>("POST", "/api/accounts/close", input),
 };
 
 /** Every structure command replies with the whole updated tree. */
@@ -84,6 +93,11 @@ export const snapshotsApi = {
   /** Sets the Account's first month per Holding (null: every month); replies with formMonth's form. */
   setPerHoldingFrom: (input: { accountId: string; month: string | null; formMonth: string }) =>
     call<{ form: SnapshotForm }>("POST", "/api/snapshots/per-holding-from", input),
+};
+
+/** Maturity timeline of the Locked Holdings, with the next Fälligkeit. */
+export const maturitiesApi = {
+  timeline: () => call<{ timeline: MaturityTimeline }>("GET", "/api/maturities"),
 };
 
 // Kept apart from `api` so tickets adding endpoints in parallel don't collide.
@@ -144,6 +158,30 @@ export const categoriesApi = {
   remove: (id: string) => call<Categories>("POST", "/api/categories/delete", { id }),
   setTransactionCategory: (transactionId: string, categoryId: string | null) =>
     call<object>("POST", "/api/transactions/category", { transactionId, categoryId }),
+};
+
+/** Categorization rules (Regeln). Every command replies with the whole list, in order. */
+type Rules = { rules: CategorizationRule[] };
+export const rulesApi = {
+  list: () => call<Rules>("GET", "/api/rules"),
+  create: (input: RuleInput) => call<Rules & { id: string }>("POST", "/api/rules/create", input),
+  update: (input: RuleInput & { id: string }) => call<Rules>("POST", "/api/rules/update", input),
+  remove: (id: string) => call<Rules>("POST", "/api/rules/delete", { id }),
+  move: (id: string, direction: "up" | "down") => call<Rules>("POST", "/api/rules/move", { id, direction }),
+  reapply: () => call<Rules & { changedCount: number }>("POST", "/api/rules/reapply", {}),
+};
+
+/** Transfers (Umbuchungen): marks by hand and the amount-matching suggestions. */
+type Suggestions = { suggestions: TransferSuggestion[] };
+export const transfersApi = {
+  /** true marks, false unmarks against detection, null returns to detection. */
+  setTransfer: (transactionId: string, transfer: boolean | null) =>
+    call<object>("POST", "/api/transactions/transfer", { transactionId, transfer }),
+  suggestions: () => call<Suggestions>("GET", "/api/transfer-suggestions"),
+  accept: (outgoingId: string, incomingId: string) =>
+    call<Suggestions>("POST", "/api/transfer-suggestions/accept", { outgoingId, incomingId }),
+  reject: (outgoingId: string, incomingId: string) =>
+    call<Suggestions>("POST", "/api/transfer-suggestions/reject", { outgoingId, incomingId }),
 };
 
 export const importProfilesApi = {

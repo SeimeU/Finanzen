@@ -4,6 +4,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import {
   accountDetail,
+  closeAccount,
+  closeHolding,
   contributionSplit,
   projection,
   setProjectionAssumptions,
@@ -12,7 +14,17 @@ import {
   deleteCategory,
   listCategories,
   setTransactionCategory,
+  setTransfer,
+  acceptTransferSuggestion,
+  rejectTransferSuggestion,
+  transferSuggestions,
   updateCategory,
+  createRule,
+  deleteRule,
+  listRules,
+  moveRule,
+  reapplyRules,
+  updateRule,
   listImports,
   previewImport,
   previewImportProfile,
@@ -25,6 +37,7 @@ import {
   createHolding,
   createInstitution,
   currentOverview,
+  maturityTimeline,
   listStructure,
   loadDocument,
   netWorthSeries,
@@ -63,6 +76,8 @@ type Reply = { status: number; body: unknown };
 type Handler = (body: Record<string, unknown>) => Promise<Reply>;
 
 const categoriesView = (document: WealthDocument) => ({ categories: listCategories(document) });
+const rulesView = (document: WealthDocument) => ({ rules: listRules(document) });
+const suggestionsView = (document: WealthDocument) => ({ suggestions: transferSuggestions(document) });
 
 export function createApp(initialConfig: AppConfig): Server {
   // The data file location can change at runtime (settings), so keep a mutable copy.
@@ -252,11 +267,15 @@ export function createApp(initialConfig: AppConfig): Server {
     "POST /api/accounts/update": command(updateAccount),
     "POST /api/holdings/create": command(createHolding),
     "POST /api/holdings/update": command(updateHolding),
+    "POST /api/holdings/close": command(closeHolding),
+    "POST /api/accounts/close": command(closeAccount),
 
     // Monatsstand (Snapshots). `today` is the server's local date, passed into the core.
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
     // Start screen headline figures and current breakdowns (ticket 09).
     "GET /api/overview": async () => (session ? ok({ overview: currentOverview(session.document) }) : locked()),
+    "GET /api/maturities": async () =>
+      session ? ok({ timeline: maturityTimeline(session.document, localToday()) }) : locked(),
     // Konto detail and Einzahlung vs market change (ticket 11).
     "POST /api/accounts/detail": async ({ id }) => {
       if (!session) return locked();
@@ -351,11 +370,26 @@ export function createApp(initialConfig: AppConfig): Server {
       session ? ok({ transactions: searchTransactions(session.document, filter) }) : locked(),
     "POST /api/transactions/category": command(setTransactionCategory, () => ({})),
 
+    // Transfers (Umbuchungen): { transactionId, transfer: true | false | null }; suggestions reply with the updated list.
+    "POST /api/transactions/transfer": command(setTransfer, () => ({})),
+    "GET /api/transfer-suggestions": async () =>
+      session ? ok({ suggestions: transferSuggestions(session.document) }) : locked(),
+    "POST /api/transfer-suggestions/accept": command(acceptTransferSuggestion, suggestionsView),
+    "POST /api/transfer-suggestions/reject": command(rejectTransferSuggestion, suggestionsView),
+
     // Categories (Kategorien). Every command replies with the whole updated tree.
     "GET /api/categories": async () => (session ? ok({ categories: listCategories(session.document) }) : locked()),
     "POST /api/categories/create": command(createCategory, categoriesView),
     "POST /api/categories/update": command(updateCategory, categoriesView),
     "POST /api/categories/delete": command(deleteCategory, categoriesView),
+
+    // Categorization rules (Regeln). Every command replies with the whole list, in order.
+    "GET /api/rules": async () => (session ? ok(rulesView(session.document)) : locked()),
+    "POST /api/rules/create": command(createRule, rulesView),
+    "POST /api/rules/update": command(updateRule, rulesView),
+    "POST /api/rules/delete": command(deleteRule, rulesView),
+    "POST /api/rules/move": command(moveRule, rulesView),
+    "POST /api/rules/reapply": command(reapplyRules, rulesView),
   };
 
   return createServer(async (request, response) => {

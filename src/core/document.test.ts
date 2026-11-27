@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(9);
+    expect(CURRENT_SCHEMA_VERSION).toBe(12);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -30,7 +30,7 @@ describe("data document", () => {
     expect(result.document.importAccountChoices).toEqual([]);
   });
 
-  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories, Account-level values", () => {
+  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories, Account-level values, Categorization rules, open Holdings and Accounts, no Transfer marks", () => {
     const origin = { category: "CASH", type: "BUY", transactionId: "x", feeCents: null, taxCents: null, securityName: null, isin: null };
     const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {} };
     const v4 = {
@@ -38,21 +38,29 @@ describe("data document", () => {
       schemaVersion: 4,
       institutions: [{ id: "i1", name: "Bank" }],
       accounts: [account],
+      holdings: [{ id: "h1", accountId: "a1", name: "Giro", classification: {} }],
       snapshots: [{ month: "2026-01", holdingValues: [] }],
       transactions: [{ id: "t1", origin }],
     } as Record<string, unknown>;
     delete v4.importProfiles;
     delete v4.importAccountChoices;
     delete v4.categories;
+    delete v4.categorizationRules;
+    delete v4.rejectedTransferSuggestions;
     const result = loadDocument(v4);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(result.document.importProfiles).toEqual([]);
     expect(result.document.transactions[0]!.origin).toEqual({ ...origin, bookingText: null, valueDate: null });
     expect(result.document.transactions[0]!.manualCategoryId).toBeNull();
+    expect(result.document.transactions[0]!.ruleCategoryId).toBeNull();
+    expect(result.document.transactions[0]!.transferMark).toBeNull();
+    expect(result.document.categorizationRules).toEqual([]);
+    expect(result.document.rejectedTransferSuggestions).toEqual([]);
     expect(result.document.importAccountChoices).toEqual([]);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null }]);
+    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null, closingMonth: null }]);
+    expect(result.document.holdings).toEqual([{ id: "h1", accountId: "a1", name: "Giro", classification: {}, startMonth: null, closingMonth: null }]);
     expect(result.document.snapshots).toEqual([{ month: "2026-01", holdingValues: [], accountValues: [] }]);
   });
 
@@ -61,7 +69,25 @@ describe("data document", () => {
     const result = loadDocument(v6);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+  });
+
+  it("a version 8 document gets no Categorization rules, and its Transactions no rule Category", () => {
+    const v8 = { ...createEmptyDocument(), schemaVersion: 8, transactions: [{ id: "t1", manualCategoryId: null }] } as Record<string, unknown>;
+    delete v8.categorizationRules;
+    const result = loadDocument(v8);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.categorizationRules).toEqual([]);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+  });
+
+  it("a version 10 document's Transactions get no Transfer mark and nothing is rejected yet", () => {
+    const v10 = { ...createEmptyDocument(), schemaVersion: 10, transactions: [{ id: "t1", manualCategoryId: null, ruleCategoryId: null }] } as Record<string, unknown>;
+    delete v10.rejectedTransferSuggestions;
+    const result = loadDocument(v10);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+    expect(result.document.rejectedTransferSuggestions).toEqual([]);
   });
 
   it("a version 7 document gets Account-level values: none recorded, every Account per Holding", () => {
@@ -76,15 +102,27 @@ describe("data document", () => {
     const result = loadDocument(v7);
     expect(result.ok && result.document).toMatchObject({
       schemaVersion: CURRENT_SCHEMA_VERSION,
-      accounts: [{ ...account, perHoldingFrom: null }],
+      accounts: [{ ...account, perHoldingFrom: null, closingMonth: null }],
       snapshots: [{ month: "2026-01", holdingValues: [], accountValues: [] }],
     });
   });
 
-  it("a version 8 document gets the default Projection assumptions", () => {
-    const v8 = { ...createEmptyDocument(), schemaVersion: 8 } as Record<string, unknown>;
-    delete v8.projectionAssumptions;
-    const result = loadDocument(v8);
+  it("a version 9 document gets open Holdings and Accounts, all from the start", () => {
+    const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {}, perHoldingFrom: null };
+    const holding = { id: "h1", accountId: "a1", name: "Giro", classification: {} };
+    const v9 = { ...createEmptyDocument(), schemaVersion: 9, institutions: [{ id: "i1", name: "Bank" }], accounts: [account], holdings: [holding] };
+    const result = loadDocument(v9);
+    expect(result.ok && result.document).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      accounts: [{ ...account, closingMonth: null }],
+      holdings: [{ ...holding, startMonth: null, closingMonth: null }],
+    });
+  });
+
+  it("a version 11 document gets the default Projection assumptions", () => {
+    const v11 = { ...createEmptyDocument(), schemaVersion: 11 } as Record<string, unknown>;
+    delete v11.projectionAssumptions;
+    const result = loadDocument(v11);
     expect(result.ok && result.document).toMatchObject({
       schemaVersion: CURRENT_SCHEMA_VERSION,
       projectionAssumptions: createEmptyDocument().projectionAssumptions,

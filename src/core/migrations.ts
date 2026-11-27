@@ -43,8 +43,29 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     accounts: (document.accounts as object[]).map((a) => ({ ...a, perHoldingFrom: null })),
     snapshots: (document.snapshots as object[]).map((s) => ({ ...s, accountValues: [] })),
   }),
-  // 8 → 9: Projection assumptions, at their defaults.
-  8: (document) => ({ ...document, schemaVersion: 9, projectionAssumptions: defaultProjectionAssumptions() }),
+  // 8 → 9: Categorization rules, and the Category they gave each Transaction.
+  8: (document) => ({
+    ...document,
+    schemaVersion: 9,
+    categorizationRules: [],
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, ruleCategoryId: null })),
+  }),
+  // 9 → 10: starting and closing months of Holdings and Accounts (all open, from the start).
+  9: (document) => ({
+    ...document,
+    schemaVersion: 10,
+    accounts: (document.accounts as object[]).map((a) => ({ ...a, closingMonth: null })),
+    holdings: (document.holdings as object[]).map((h) => ({ ...h, startMonth: null, closingMonth: null })),
+  }),
+  // 10 → 11: Transfers: the owner's mark on each Transaction and the rejected Transfer suggestions.
+  10: (document) => ({
+    ...document,
+    schemaVersion: 11,
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, transferMark: null })),
+    rejectedTransferSuggestions: [],
+  }),
+  // 11 → 12: Projection assumptions, at their defaults.
+  11: (document) => ({ ...document, schemaVersion: 12, projectionAssumptions: defaultProjectionAssumptions() }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

@@ -1,12 +1,14 @@
 import type { ImportAccountChoice, ImportRecord, Transaction, WealthDocument } from "../document";
 import { fail, type Result } from "../result";
+import { ruleCategoryFor } from "../rules";
 import { decodeText } from "./csv";
 import { genericProfiles } from "./generic";
 import type { ImportProfile, ParsedTransaction } from "./profile";
 import { BUILT_IN_PROFILES } from "./profiles";
 
 /**
- * The import pipeline: detect format → parse → normalize → deduplicate → preview → confirm.
+ * The import pipeline: detect format → parse → normalize → deduplicate → preview → confirm
+ * (confirm stores what the Categorization rules say about each new Transaction).
  * Pure: files come in as bytes, the import time is passed in.
  */
 
@@ -98,6 +100,8 @@ export function confirmImport(
       importId,
       ...t,
       manualCategoryId: null,
+      ruleCategoryId: ruleCategoryFor(document.categorizationRules, t),
+      transferMark: null,
     }));
     const record: ImportRecord = {
       id: importId,
@@ -115,17 +119,23 @@ export function confirmImport(
   return { ok: true, document: { ...document, transactions, imports, importAccountChoices }, files };
 }
 
-/** Removes an import and exactly the Transactions it stored. */
+/**
+ * Removes an import and exactly the Transactions it stored, and the rejected Transfer
+ * suggestions naming them (their ids may be given out again by a later import).
+ */
 export function undoImport(document: WealthDocument, input: { importId: string }): Result<{ document: WealthDocument }> {
   if (!document.imports.some((i) => i.id === input.importId)) {
     return fail("import-not-found", "Diesen Import gibt es nicht.");
   }
+  const transactions = document.transactions.filter((t) => t.importId !== input.importId);
+  const kept = new Set(transactions.map((t) => t.id));
   return {
     ok: true,
     document: {
       ...document,
       imports: document.imports.filter((i) => i.id !== input.importId),
-      transactions: document.transactions.filter((t) => t.importId !== input.importId),
+      transactions,
+      rejectedTransferSuggestions: document.rejectedTransferSuggestions.filter((pair) => pair.every((id) => kept.has(id))),
     },
   };
 }

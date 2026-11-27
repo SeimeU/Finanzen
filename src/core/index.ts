@@ -19,9 +19,11 @@ export {
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
+export { accountIsOpen, closeAccount, closeHolding, holdingIsActive, setHoldingStart } from "./closing";
 export * from "./notes";
 export * from "./accountDetail";
 export * from "./overview";
+export * from "./maturities";
 export * from "./projection";
 export { type ImportAccountChoice, type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
 export {
@@ -52,5 +54,9 @@ export {
   type CategorySource,
   type ClassifiedTransaction,
   type TransactionClassification,
+  type TransferSource,
 } from "./classification";
+export * from "./transfers";
 export * from "./categories";
+export { type CategorizationRule, type RuleCondition } from "./document";
+export { createRule, deleteRule, listRules, moveRule, reapplyRules, updateRule, type RuleInput } from "./rules";
