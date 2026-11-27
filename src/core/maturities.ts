@@ -1,4 +1,5 @@
-import type { Holding, WealthDocument } from "./document";
+import { accountIsOpen } from "./closing";
+import type { Holding, WealthDocument, YearMonth } from "./document";
 import { netWorthSeries } from "./snapshots";
 import { valuationOfHolding } from "./structure";
 
@@ -33,7 +34,7 @@ export type NextMaturity = {
 export function maturityTimeline(document: WealthDocument, today: string): MaturityTimeline {
   const latest = netWorthSeries(document).at(-1);
   const entries = document.holdings
-    .filter(isOnTimeline)
+    .filter((holding) => isOpenLocked(document, holding, today.slice(0, 7)))
     .map((holding): MaturityEntry => {
       const value = latest?.holdings.find((v) => v.holdingId === holding.id);
       const maturityDate = holding.classification.maturityDate!;
@@ -59,7 +60,15 @@ export function maturityTimeline(document: WealthDocument, today: string): Matur
   return { entries, next };
 }
 
-/** The one check deciding which Holdings the timeline lists. Closing (ticket 05): also require the Holding to be open. */
-function isOnTimeline(holding: Holding): boolean {
-  return holding.classification.liquidity === "locked";
+/**
+ * The one check deciding which Holdings the timeline lists: Locked, and neither it nor its
+ * Account closed as of `month` (today's). A Holding not yet started still counts.
+ */
+function isOpenLocked(document: WealthDocument, holding: Holding, month: YearMonth): boolean {
+  const account = document.accounts.find((a) => a.id === holding.accountId)!;
+  return (
+    holding.classification.liquidity === "locked" &&
+    (holding.closingMonth === null || month < holding.closingMonth) &&
+    accountIsOpen(account, month)
+  );
 }

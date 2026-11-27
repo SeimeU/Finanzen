@@ -425,3 +425,17 @@ button:disabled {
   font-weight: 600;
   color: #15803d;
 }
+
+.rules {
+  padding-left: 1.5rem;
+}
+
+.rules .rule {
+  align-items: center;
+  margin: 0.4rem 0;
+}
+
+.rule-form {
+  align-items: center;
+  max-width: none;
+}

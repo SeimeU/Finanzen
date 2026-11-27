@@ -1,12 +1,14 @@
 import type { ImportAccountChoice, ImportRecord, Transaction, WealthDocument } from "../document";
 import { fail, type Result } from "../result";
+import { ruleCategoryFor } from "../rules";
 import { decodeText } from "./csv";
 import { genericProfiles } from "./generic";
 import type { ImportProfile, ParsedTransaction } from "./profile";
 import { BUILT_IN_PROFILES } from "./profiles";
 
 /**
- * The import pipeline: detect format → parse → normalize → deduplicate → preview → confirm.
+ * The import pipeline: detect format → parse → normalize → deduplicate → preview → confirm
+ * (confirm stores what the Categorization rules say about each new Transaction).
  * Pure: files come in as bytes, the import time is passed in.
  */
 
@@ -98,6 +100,7 @@ export function confirmImport(
       importId,
       ...t,
       manualCategoryId: null,
+      ruleCategoryId: ruleCategoryFor(document.categorizationRules, t),
     }));
     const record: ImportRecord = {
       id: importId,

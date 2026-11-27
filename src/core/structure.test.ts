@@ -62,6 +62,7 @@ describe("Accounts", () => {
         iban: "AT611904300234573201",
         isDebt: false,
         defaultClassification: AVAILABLE_CASH,
+        closingMonth: null,
         holdings: [],
       },
     ]);
@@ -87,7 +88,7 @@ describe("Holdings", () => {
     const { document: next, id } = must(
       createHolding(document, { accountId, name: "MSCI World", classification }),
     );
-    expect(holdingsOf(next)).toEqual([{ id, name: "MSCI World", classification }]);
+    expect(holdingsOf(next)).toEqual([{ id, name: "MSCI World", classification, startMonth: null, closingMonth: null }]);
   });
 
   it("accepts every Asset class", () => {
@@ -217,7 +218,7 @@ describe("editing", () => {
     );
     const etf = { assetClass: "etf", liquidity: "available", maturityDate: null } as const;
     const { document: next } = must(updateHolding(withHolding, { id, name: "MSCI World", classification: etf }));
-    expect(holdingsOf(next)).toEqual([{ id, name: "MSCI World", classification: etf }]);
+    expect(holdingsOf(next)).toEqual([{ id, name: "MSCI World", classification: etf, startMonth: null, closingMonth: null }]);
     expect(errorCode(updateHolding(withHolding, { id: "h99", name: "x", classification: etf }))).toBe(
       "holding-not-found",
     );

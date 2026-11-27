@@ -65,8 +65,8 @@ export function updateCategory(
 }
 
 /**
- * Deletes a Category that has no children. Transactions the owner had put in it
- * lose their manual Category and are classified automatically again (or land in the inbox).
+ * Deletes a Category that has no children, and the Categorization rules that assign it.
+ * Transactions in it (by hand or by rule) are classified automatically again (or land in the inbox).
  */
 export function deleteCategory(document: WealthDocument, input: { id: string }): Updated {
   if (!document.categories.some((c) => c.id === input.id)) return fail("category-not-found", "Diese Kategorie gibt es nicht.");
@@ -78,7 +78,16 @@ export function deleteCategory(document: WealthDocument, input: { id: string }):
     document: {
       ...document,
       categories: document.categories.filter((c) => c.id !== input.id),
-      transactions: document.transactions.map((t) => (t.manualCategoryId === input.id ? { ...t, manualCategoryId: null } : t)),
+      categorizationRules: document.categorizationRules.filter((r) => r.categoryId !== input.id),
+      transactions: document.transactions.map((t) =>
+        t.manualCategoryId === input.id || t.ruleCategoryId === input.id
+          ? {
+              ...t,
+              manualCategoryId: t.manualCategoryId === input.id ? null : t.manualCategoryId,
+              ruleCategoryId: t.ruleCategoryId === input.id ? null : t.ruleCategoryId,
+            }
+          : t,
+      ),
     },
   };
 }

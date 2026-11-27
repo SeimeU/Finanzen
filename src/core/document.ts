@@ -19,6 +19,8 @@ export type WealthDocument = {
   importAccountChoices: ImportAccountChoice[];
   /** Two levels: top-level Categories (parentId null) and their children. See ./categories.ts. */
   categories: Category[];
+  /** Categorization rules in the owner's order; the first match wins. See ./rules.ts. */
+  categorizationRules: CategorizationRule[];
 };
 
 export type ImportAccountChoice = { fileName: string; accountId: string };
@@ -39,6 +41,8 @@ export type Account = {
    * Account-level value instead. null: per Holding in every month.
    */
   perHoldingFrom: YearMonth | null;
+  /** The first month the Account no longer appears in (closed as of it). null: open. See ./closing.ts. */
+  closingMonth: YearMonth | null;
 };
 
 /**
@@ -51,6 +55,10 @@ export type Holding = {
   accountId: string;
   name: string;
   classification: Classification;
+  /** The first month the Holding can have a value. null: from the start. See ./closing.ts. */
+  startMonth: YearMonth | null;
+  /** The first month the Holding no longer appears in (closed as of it). null: open. */
+  closingMonth: YearMonth | null;
 };
 
 export const ASSET_CLASSES = ["cash", "etf", "stock", "bond", "crypto", "commodity", "other"] as const;
@@ -68,6 +76,10 @@ export type Classification = {
 
 /** A calendar month, "YYYY-MM". Its reference date is the month's last day. */
 export type YearMonth = string;
+
+export function isYearMonth(raw: unknown): raw is YearMonth {
+  return typeof raw === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw);
+}
 
 /**
  * The values recorded for one month. Holdings (and Accounts) left out keep their latest
@@ -119,6 +131,12 @@ export type Transaction = {
   origin: TransactionOrigin;
   /** The Category the owner set by hand; it wins over every automatic classification. */
   manualCategoryId: string | null;
+  /**
+   * The Category the Categorization rules gave it when it was imported or when the
+   * rules were last re-applied; null when no rule matched. Manual and Trade/Transfer
+   * classification win over it at query time.
+   */
+  ruleCategoryId: string | null;
 };
 
 /**
@@ -154,6 +172,15 @@ export type Category = {
   parentId: string | null;
   kind: CategoryKind;
 };
+
+/** Text conditions compare case-insensitively, with runs of whitespace collapsed. */
+export type RuleCondition =
+  | { field: "counterparty" | "purpose" | "reference"; operator: "contains" | "equals"; text: string }
+  /** Signed cents, as on the Transaction: outflows are negative. */
+  | { field: "amount"; operator: "equals" | "atLeast" | "atMost"; amountCents: number };
+
+/** A Categorization rule (Regel): Transactions meeting the condition get the Category. Ids r1, r2, …. */
+export type CategorizationRule = { id: string; condition: RuleCondition; categoryId: string };
 
 export type ImportRecord = {
   id: string;
@@ -203,7 +230,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -217,6 +244,7 @@ export function createEmptyDocument(): WealthDocument {
     importProfiles: [],
     importAccountChoices: [],
     categories: defaultCategories(),
+    categorizationRules: [],
   };
 }
 

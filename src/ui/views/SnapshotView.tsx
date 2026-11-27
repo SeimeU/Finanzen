@@ -179,7 +179,11 @@ export function SnapshotView() {
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} required />
         </label>
         {form?.exists && <p className="empty">Für diesen Monat gibt es schon einen Monatsstand. Speichern ersetzt ihn.</p>}
-        {form && accounts.length === 0 && <p className="empty">Noch keine Positionen angelegt.</p>}
+        {form && accounts.length === 0 && (
+          <p className="empty">
+            {form.hasHoldings ? "In diesem Monat ist keine Position offen." : "Noch keine Positionen angelegt."}
+          </p>
+        )}
         {form?.institutions.map((institution) => (
           <section key={institution.id} className="institution">
             <h2>{institution.name}</h2>

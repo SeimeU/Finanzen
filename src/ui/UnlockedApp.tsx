@@ -6,6 +6,7 @@ import { CategoriesView } from "./views/CategoriesView";
 import { InboxView } from "./views/InboxView";
 import { MaturitiesView } from "./views/MaturitiesView";
 import { NotesView } from "./views/NotesView";
+import { RulesView } from "./views/RulesView";
 import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
 import { SnapshotView } from "./views/SnapshotView";
@@ -24,6 +25,7 @@ const VIEWS = {
   transactions: "Umsätze",
   inbox: "Nicht kategorisiert",
   categories: "Kategorien",
+  rules: "Regeln",
   import: "Import",
   accounts: "Konten verwalten",
   settings: "Einstellungen",
@@ -84,6 +86,7 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
           {view === "transactions" && <TransactionsView />}
           {view === "inbox" && <InboxView />}
           {view === "categories" && <CategoriesView />}
+          {view === "rules" && <RulesView />}
           {view === "import" && <ImportView />}
           {view === "accounts" && <AccountsView onOpenAccount={setOpenAccountId} />}
           {view === "settings" && <SettingsView />}

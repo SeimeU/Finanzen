@@ -1,6 +1,6 @@
 // German UI labels for domain values (see GLOSSARY.md `_UI_` lines).
-import type { AssetClass, CategoryKind, CategoryNode, Classification, Liquidity } from "../core";
-import { formatDate } from "./format";
+import type { AssetClass, CategoryKind, CategoryNode, Classification, Liquidity, RuleCondition } from "../core";
+import { formatDate, formatEur } from "./format";
 
 export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
   cash: "Cash",
@@ -37,6 +37,26 @@ export function categoryOptions(tree: CategoryNode[]): { id: string; label: stri
     { id: top.id, label: top.name },
     ...top.children.map((c) => ({ id: c.id, label: `${top.name} → ${c.name}` })),
   ]);
+}
+
+export const RULE_FIELD_LABELS: Record<RuleCondition["field"], string> = {
+  counterparty: "Gegenüber",
+  purpose: "Verwendungszweck",
+  reference: "Zahlungsreferenz",
+  amount: "Betrag",
+};
+
+export const RULE_OPERATOR_LABELS: Record<RuleCondition["operator"], string> = {
+  contains: "enthält",
+  equals: "ist gleich",
+  atLeast: "mindestens",
+  atMost: "höchstens",
+};
+
+/** 'Gegenüber enthält „billa“' or 'Betrag mindestens 100,00 €'. */
+export function formatRuleCondition(c: RuleCondition): string {
+  const value = c.field === "amount" ? formatEur(c.amountCents) : `„${c.text}“`;
+  return `${RULE_FIELD_LABELS[c.field]} ${RULE_OPERATOR_LABELS[c.operator]} ${value}`;
 }
 
 /** Every Account as "Institut – Konto", for Konto selects. */

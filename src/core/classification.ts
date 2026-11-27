@@ -3,7 +3,8 @@ import { fail, type Result } from "./result";
 
 /**
  * How a Transaction counts. Computed at query time from the document, never stored,
- * so editing Categories (or, later, rules) is reflected everywhere at once.
+ * so editing Categories is reflected everywhere at once. Only the match of the
+ * Categorization rules is stored (rules apply on import and on an explicit re-apply).
  * `cashFlow` says how spending and income queries count it: Trades (and, with
  * ticket 18, Transfers) are "excluded"; Uncategorized is "unknown".
  */
@@ -12,8 +13,8 @@ export type TransactionClassification =
   | { kind: "trade"; direction: "buy" | "sell"; cashFlow: "excluded" }
   | { kind: "uncategorized"; cashFlow: "unknown" };
 
-/** Who put the Transaction in its Category. Ticket 17 adds "rule". */
-export type CategorySource = "manual" | "bank";
+/** Who put the Transaction in its Category. */
+export type CategorySource = "manual" | "bank" | "rule";
 
 export type ClassifiedTransaction = Transaction & { classification: TransactionClassification };
 
@@ -40,7 +41,7 @@ const PRECEDENCE: Classifier[] = [
   manualCategory,
   bankClassification,
   // Ticket 18: Transfer detection belongs here, next to the bank's own Trade classification.
-  // Ticket 17: Categorization rules (first match in user order) go here, after Trades/Transfers.
+  categorizationRule,
 ];
 
 /** Classifies the given Transactions of the document (in the given order). */
@@ -67,6 +68,14 @@ function manualCategory(transaction: Transaction): Proposal | null {
   return transaction.manualCategoryId
     ? { kind: "category", categoryId: transaction.manualCategoryId, source: "manual" }
     : null;
+}
+
+/**
+ * The Category the first matching Categorization rule gave it, stored on import or
+ * on the last re-apply (./rules.ts).
+ */
+function categorizationRule(transaction: Transaction): Proposal | null {
+  return transaction.ruleCategoryId ? { kind: "category", categoryId: transaction.ruleCategoryId, source: "rule" } : null;
 }
 
 /**

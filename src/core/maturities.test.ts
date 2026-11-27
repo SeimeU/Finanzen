@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  closeAccount,
+  closeHolding,
   createAccount,
   createEmptyDocument,
   createHolding,
@@ -194,5 +196,31 @@ describe("maturityTimeline", () => {
     expect(maturityTimeline(document, "2027-03-31").next).toEqual({ maturityDate: "2027-03-31", amount: 500_000 });
     expect(maturityTimeline(document, "2027-04-01").next).toEqual({ maturityDate: "2030-06-30", amount: 1_250_000 });
     expect(maturityTimeline(document, "2055-01-02").next).toBeNull();
+  });
+
+  it("leaves out closed Holdings and the Holdings of closed Accounts", () => {
+    const s = setup();
+    let document = save(s.document, "2026-09", {
+      holdingValues: [
+        { holdingId: s.late, marketValue: 1_000_000 },
+        { holdingId: s.early, marketValue: 500_000 },
+        { holdingId: s.pension, marketValue: 2_000_000 },
+      ],
+    });
+    document = must(closeHolding(document, { holdingId: s.early, month: "2026-10" })).document;
+    document = must(closeAccount(document, { accountId: s.pensionAccount, month: "2026-11" })).document;
+
+    const timeline = maturityTimeline(document, TODAY);
+
+    expect(timeline.entries.map((e) => e.holdingName)).toEqual(["Festgeld 2030"]);
+    expect(timeline.next).toEqual({ maturityDate: "2030-06-30", amount: 1_000_000 });
+  });
+
+  it("still lists a Holding whose closing month is after today's month", () => {
+    const s = setup();
+    let document = save(s.document, "2026-09", { holdingValues: [{ holdingId: s.early, marketValue: 500_000 }] });
+    document = must(closeHolding(document, { holdingId: s.early, month: "2026-12" })).document;
+
+    expect(maturityTimeline(document, TODAY).entries.map((e) => e.holdingName)).toContain("Festgeld 2027");
   });
 });
