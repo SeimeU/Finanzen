@@ -57,9 +57,15 @@ export function decimalToCents(raw: string): number | null {
   return sign === "-" && cents !== 0 ? -cents : cents;
 }
 
-/** True for a real calendar date written YYYY-MM-DD. */
-export function isIsoDate(raw: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
-  const date = new Date(`${raw}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === raw;
+export { isIsoDate } from "../dates";
+
+/** The text up to the first line break (the header row, for `detect`). */
+export function firstLine(text: string): string {
+  const end = text.search(/\r?\n/);
+  return end === -1 ? text : text.slice(0, end);
+}
+
+/** A header cell as profiles compare it: trimmed, lower case. */
+export function normalizeHeader(cell: string): string {
+  return cell.trim().toLowerCase();
 }

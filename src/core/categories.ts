@@ -1,4 +1,5 @@
 import { CATEGORY_KINDS, type Category, type CategoryKind, type WealthDocument } from "./document";
+import { nextId } from "./ids";
 import { fail, type Result } from "./result";
 
 export type CategoryNode = { id: string; name: string; kind: CategoryKind; children: CategoryNode[] };
@@ -108,10 +109,6 @@ function validName(
 }
 
 function nextCategoryId(document: WealthDocument): string {
-  let max = 0;
-  for (const c of document.categories) {
-    const m = /^c(\d+)$/.exec(c.id);
-    if (m && Number(m[1]) > max) max = Number(m[1]);
-  }
-  return `c${max + 1}`;
+  // Default Categories have readable ids ("lebensmittel"); only "c<number>" ids count.
+  return nextId(document.categories, "c");
 }

@@ -1,5 +1,6 @@
 import type { ImportAccountChoice, ImportRecord, Transaction, WealthDocument } from "../document";
-import { fail, type Result } from "../result";
+import { nextId, nextNumber } from "../ids";
+import { fail, type CoreError, type Result } from "../result";
 import { ruleCategoryFor } from "../rules";
 import { decodeText } from "./csv";
 import { genericProfiles } from "./generic";
@@ -29,7 +30,7 @@ export type FilePreview =
       newCount: number;
       duplicateCount: number;
     }
-  | { name: string; ok: false; error: { code: string; message: string } };
+  | { name: string; ok: false; error: CoreError };
 
 /** Previews each file on its own; an unreadable file gets an error entry, the others are unaffected. */
 export function previewImport(
@@ -155,7 +156,7 @@ export function listImports(document: WealthDocument): ImportRecord[] {
 
 type ReadFile =
   | { ok: true; profile: ImportProfile; transactions: ParsedTransaction[] }
-  | { ok: false; error: { code: string; message: string } };
+  | { ok: false; error: CoreError };
 
 function readFile(document: WealthDocument, file: ImportFileInput): ReadFile {
   if (!(file.bytes instanceof Uint8Array) || file.bytes.length === 0) {
@@ -224,15 +225,3 @@ function normalizeText(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function nextNumber(entries: { id: string }[], prefix: string): number {
-  let max = 0;
-  for (const e of entries) {
-    const n = Number(e.id.slice(prefix.length));
-    if (e.id.startsWith(prefix) && Number.isFinite(n) && n > max) max = n;
-  }
-  return max + 1;
-}
-
-function nextId(entries: { id: string }[], prefix: string): string {
-  return `${prefix}${nextNumber(entries, prefix)}`;
-}

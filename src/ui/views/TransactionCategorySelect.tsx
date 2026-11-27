@@ -1,4 +1,5 @@
 import type { ClassifiedTransaction } from "../../core";
+import { TRADE_DIRECTION_LABELS } from "../labels";
 
 /**
  * The "Kategorie" select of one Transaction. It shows the current classification;
@@ -17,7 +18,7 @@ export function TransactionCategorySelect({
   const c = transaction.classification;
   const value = c.kind === "category" ? c.categoryId : "";
   const automatic =
-    c.kind === "trade" ? (c.direction === "buy" ? "Kauf" : "Verkauf") : c.kind === "transfer" ? "Umbuchung" : "Nicht kategorisiert";
+    c.kind === "trade" ? TRADE_DIRECTION_LABELS[c.direction] : c.kind === "transfer" ? "Umbuchung" : "Nicht kategorisiert";
   return (
     <select aria-label="Kategorie" value={value} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">{c.kind === "category" ? "Automatisch" : automatic}</option>

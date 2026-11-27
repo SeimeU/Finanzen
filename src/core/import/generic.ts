@@ -8,7 +8,9 @@ import {
   type WealthDocument,
 } from "../document";
 import { fail, type Result } from "../result";
-import { decimalToCents, decodeText, isIsoDate, parseCsv } from "./csv";
+import { nextId } from "../ids";
+import { fail as failure, type CoreError } from "../result";
+import { decimalToCents, decodeText, isIsoDate, normalizeHeader, parseCsv } from "./csv";
 import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
 
 /**
@@ -36,7 +38,7 @@ export type ImportProfilePreview = {
   lines: string[][];
   result:
     | { ok: true; transactions: ParsedTransaction[]; transactionCount: number }
-    | { ok: false; error: { code: string; message: string } };
+    | { ok: false; error: CoreError };
 };
 
 /** Live preview while the owner sets up a generic Import profile: the first parsed rows, or why the file doesn't fit. */
@@ -71,7 +73,7 @@ export function saveImportProfile(
   const read = readSample(input);
   if (!read.ok) return fail(read.error.code, read.error.message);
   const existing = document.importProfiles.find((p) => p.accountId === input.accountId);
-  const id = existing?.id ?? nextProfileId(document.importProfiles);
+  const id = existing?.id ?? nextId(document.importProfiles, "ip");
   const s = input.settings;
   const profile: GenericImportProfile = {
     id,
@@ -117,7 +119,7 @@ export function genericProfiles(document: WealthDocument): ImportProfile[] {
 
 type Read =
   | { ok: true; transactions: ParsedTransaction[]; columnCount: number; header: string[] | null }
-  | { ok: false; error: { code: string; message: string } };
+  | { ok: false; error: CoreError };
 
 function readSample(input: { settings: GenericProfileSettings; sample: Uint8Array }): Read {
   const invalid = validateSettings(input.settings);
@@ -250,19 +252,3 @@ function splitLines(text: string): string[] {
   return text.split(/\r?\n/);
 }
 
-function normalizeHeader(cell: string): string {
-  return cell.trim().toLowerCase();
-}
-
-function failure(code: string, message: string): { ok: false; error: { code: string; message: string } } {
-  return { ok: false, error: { code, message } };
-}
-
-function nextProfileId(profiles: GenericImportProfile[]): string {
-  let max = 0;
-  for (const p of profiles) {
-    const n = Number(p.id.slice(2));
-    if (p.id.startsWith("ip") && Number.isFinite(n) && n > max) max = n;
-  }
-  return `ip${max + 1}`;
-}

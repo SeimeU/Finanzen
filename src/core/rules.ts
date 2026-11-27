@@ -1,4 +1,5 @@
 import type { CategorizationRule, RuleCondition, Transaction, WealthDocument } from "./document";
+import { nextId } from "./ids";
 import { fail, type Result } from "./result";
 
 /**
@@ -27,7 +28,7 @@ export function listRules(document: WealthDocument): CategorizationRule[] {
 export function createRule(document: WealthDocument, input: RuleInput): Created {
   const rule = validRule(document, input);
   if (!rule.ok) return rule;
-  const id = `r${document.categorizationRules.reduce((max, r) => Math.max(max, Number(r.id.slice(1)) || 0), 0) + 1}`;
+  const id = nextId(document.categorizationRules, "r");
   const next = { ...document, categorizationRules: [...document.categorizationRules, { id, ...rule.value }] };
   return { ok: true, id, document: input.applyToExisting ? reapply(next).document : next };
 }

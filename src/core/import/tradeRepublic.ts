@@ -1,4 +1,5 @@
-import { decimalToCents, isIsoDate, parseCsv } from "./csv";
+import { fail as failure } from "../result";
+import { decimalToCents, firstLine, isIsoDate, normalizeHeader, parseCsv } from "./csv";
 import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
 
 /**
@@ -119,15 +120,4 @@ function parse(text: string): ParseResult {
   return { ok: true, transactions };
 }
 
-function failure(code: string, message: string): ParseResult {
-  return { ok: false, error: { code, message } };
-}
 
-function firstLine(text: string): string {
-  const end = text.search(/\r?\n/);
-  return end === -1 ? text : text.slice(0, end);
-}
-
-function normalizeHeader(cell: string): string {
-  return cell.trim().toLowerCase();
-}

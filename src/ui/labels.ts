@@ -31,6 +31,18 @@ export const CATEGORY_KIND_LABELS: Record<CategoryKind, string> = {
   expense: "Ausgabe",
 };
 
+/** Plural, for totals and headings: "Ausgaben nach Kategorie". */
+export const CATEGORY_KIND_PLURAL_LABELS: Record<CategoryKind, string> = {
+  income: "Einnahmen",
+  expense: "Ausgaben",
+};
+
+/** A Trade's direction. */
+export const TRADE_DIRECTION_LABELS: Record<"buy" | "sell", string> = {
+  buy: "Kauf",
+  sell: "Verkauf",
+};
+
 /** Every Category as "Wohnen" or "Wohnen → Miete", in tree order, for Kategorie selects. */
 export function categoryOptions(tree: CategoryNode[]): { id: string; label: string }[] {
   return tree.flatMap((top) => [

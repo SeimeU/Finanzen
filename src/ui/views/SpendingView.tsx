@@ -2,12 +2,11 @@ import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import type { CashFlowMonth, CategoryKind, CategorySpendingRow, InstitutionView } from "../../core";
 import { spendingApi } from "../api";
 import { formatEur, formatMonth } from "../format";
+import { CATEGORY_KIND_PLURAL_LABELS } from "../labels";
 
 const BreakdownChart = lazy(() => import("../BreakdownChart").then((m) => ({ default: m.BreakdownChart })));
 const CashFlowChart = lazy(() => import("../SpendingCharts").then((m) => ({ default: m.CashFlowChart })));
 const HistoryChart = lazy(() => import("../SpendingCharts").then((m) => ({ default: m.HistoryChart })));
-
-const KIND_LABELS: Record<CategoryKind, string> = { expense: "Ausgaben", income: "Einnahmen" };
 
 /** 0.6238 → "62,4 %". */
 function formatRate(rate: number): string {
@@ -129,7 +128,7 @@ function CategorySection({ months }: { months: CashFlowMonth[] }) {
     spendingApi.categories({ period, kind, parentId: parent?.id ?? null }).then((r) => setRows(r.rows));
   }, [period, kind, parent, months]);
 
-  const label = `${KIND_LABELS[kind]} nach Kategorie – ${parent ? `${parent.name}, ` : ""}${formatPeriod(period)}`;
+  const label = `${CATEGORY_KIND_PLURAL_LABELS[kind]} nach Kategorie – ${parent ? `${parent.name}, ` : ""}${formatPeriod(period)}`;
   const chartRows = useMemo(() => (rows ?? []).map((r) => ({ name: r.name, value: r.amount })), [rows]);
 
   return (
@@ -165,8 +164,8 @@ function CategorySection({ months }: { months: CashFlowMonth[] }) {
               setParent(null);
             }}
           >
-            <option value="expense">{KIND_LABELS.expense}</option>
-            <option value="income">{KIND_LABELS.income}</option>
+            <option value="expense">{CATEGORY_KIND_PLURAL_LABELS.expense}</option>
+            <option value="income">{CATEGORY_KIND_PLURAL_LABELS.income}</option>
           </select>
         </label>
         {parent && (
@@ -175,7 +174,7 @@ function CategorySection({ months }: { months: CashFlowMonth[] }) {
           </button>
         )}
       </div>
-      {rows !== null && rows.length === 0 && <p className="empty">Keine {KIND_LABELS[kind]} in diesem Zeitraum.</p>}
+      {rows !== null && rows.length === 0 && <p className="empty">Keine {CATEGORY_KIND_PLURAL_LABELS[kind]} in diesem Zeitraum.</p>}
       {rows !== null && rows.length > 0 && (
         <>
           <Suspense fallback={null}>

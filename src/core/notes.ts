@@ -1,4 +1,5 @@
 import type { MonthEvent, Snapshot, WealthDocument, YearMonth } from "./document";
+import { nextId } from "./ids";
 import { fail, type Result } from "./result";
 
 /** A month with a Note or Events (or both). */
@@ -94,8 +95,7 @@ function validEvent(input: { label: unknown; amount: unknown }): Result<{ label:
 
 /** "e" plus a running number, unique among all Events. */
 function nextEventId(document: WealthDocument): string {
-  const used = document.snapshots.flatMap((s) => s.events ?? []).map((e) => Number(e.id.slice(1)));
-  return `e${Math.max(0, ...used) + 1}`;
+  return nextId(document.snapshots.flatMap((s) => s.events ?? []), "e");
 }
 
 function validMonth(input: MonthInput): Result<object> {

@@ -10,7 +10,9 @@ import {
   isYearMonth,
 } from "./document";
 import { setHoldingStart } from "./closing";
-import { fail, type Result } from "./result";
+import { isIsoDate } from "./dates";
+import { nextId } from "./ids";
+import { fail, type CoreError, type Result } from "./result";
 
 type Created = Result<{ document: WealthDocument; id: string }>;
 
@@ -30,7 +32,7 @@ export type AccountInput = {
 export function createInstitution(document: WealthDocument, input: { name: string }): Created {
   const name = validName(input.name);
   if (!name.ok) return name;
-  const id = nextId(document, "i");
+  const id = nextStructureId(document, "i");
   const institution: Institution = { id, name: name.value };
   return { ok: true, id, document: { ...document, institutions: [...document.institutions, institution] } };
 }
@@ -38,7 +40,7 @@ export function createInstitution(document: WealthDocument, input: { name: strin
 export function createAccount(document: WealthDocument, input: AccountInput): Created {
   const account = validAccount(document, "", input);
   if (!account.ok) return account;
-  const id = nextId(document, "a");
+  const id = nextStructureId(document, "a");
   return {
     ok: true,
     id,
@@ -51,7 +53,7 @@ export function createHolding(document: WealthDocument, input: NewHoldingInput):
   if (!holding.ok) return holding;
   const startMonth = input.startMonth ?? null;
   if (startMonth !== null && !isYearMonth(startMonth)) return fail("invalid-month", "Bitte einen gültigen Monat wählen.");
-  const id = nextId(document, "h");
+  const id = nextStructureId(document, "h");
   return {
     ok: true,
     id,
@@ -163,7 +165,7 @@ export function listStructure(document: WealthDocument): InstitutionView[] {
 
 // --- validation ---
 
-type Valid<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } };
+type Valid<T> = { ok: true; value: T } | { ok: false; error: CoreError };
 
 function validName(raw: unknown): Valid<string> {
   const name = typeof raw === "string" ? raw.trim() : "";
@@ -232,12 +234,6 @@ function validClassification(raw: Classification | undefined): Valid<Classificat
   return { ok: true, value: { assetClass: raw.assetClass, liquidity: "locked", maturityDate: raw.maturityDate } };
 }
 
-function isIsoDate(raw: unknown): raw is string {
-  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
-  const date = new Date(`${raw}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === raw;
-}
-
 function validHolding(
   document: WealthDocument,
   id: string,
@@ -253,9 +249,7 @@ function validHolding(
   return { ok: true, value: { id, accountId: input.accountId, name: name.value, classification: classification.value } };
 }
 
-/** Ids are a prefix plus a running number, unique within the document. */
-function nextId(document: WealthDocument, prefix: string): string {
-  const all = [...document.institutions, ...document.accounts, ...document.holdings];
-  const used = all.filter((e) => e.id.startsWith(prefix)).map((e) => Number(e.id.slice(prefix.length)));
-  return `${prefix}${Math.max(0, ...used) + 1}`;
+/** Ids are a prefix plus a running number, unique among the document's Institutions, Accounts and Holdings. */
+function nextStructureId(document: WealthDocument, prefix: string): string {
+  return nextId([...document.institutions, ...document.accounts, ...document.holdings], prefix);
 }

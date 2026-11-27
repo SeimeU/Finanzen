@@ -1,4 +1,5 @@
 import type { TransactionOrigin } from "../document";
+import type { CoreError } from "../result";
 
 /**
  * One row of a bank export, normalized to the fields a Transaction keeps.
@@ -16,7 +17,7 @@ export type ParsedTransaction = {
 
 export type ParseResult =
   | { ok: true; transactions: ParsedTransaction[] }
-  | { ok: false; error: { code: string; message: string } };
+  | { ok: false; error: CoreError };
 
 /**
  * An Import profile: how to recognize and read one bank's CSV export.

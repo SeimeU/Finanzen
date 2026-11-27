@@ -1,4 +1,5 @@
-import { isIsoDate, parseCsv } from "./csv";
+import { fail as failure } from "../result";
+import { firstLine, isIsoDate, parseCsv } from "./csv";
 import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
 
 /**
@@ -189,11 +190,4 @@ function germanDecimalToCents(raw: string): number | null {
   return sign === "-" && cents !== 0 ? -cents : cents;
 }
 
-function failure(code: string, message: string): ParseResult {
-  return { ok: false, error: { code, message } };
-}
 
-function firstLine(text: string): string {
-  const end = text.search(/\r?\n/);
-  return end === -1 ? text : text.slice(0, end);
-}
