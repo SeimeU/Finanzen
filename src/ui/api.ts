@@ -5,6 +5,7 @@ import type {
   CategoryKind,
   CategoryNode,
   ContributionMonth,
+  CurrentOverview,
   Classification,
   ClassifiedTransaction,
   FilePreview,
@@ -74,6 +75,8 @@ export type Backup = { id: string; createdAt: string };
 /** Monatsstand (Snapshots) and the Net worth series. Amounts in integer cents. */
 export const snapshotsApi = {
   netWorth: () => call<{ series: NetWorthMonth[] }>("GET", "/api/net-worth"),
+  /** Headline figures and current breakdowns; overview is null without any Monatsstand. */
+  overview: () => call<{ overview: CurrentOverview | null }>("GET", "/api/overview"),
   form: (month: string) => call<{ form: SnapshotForm }>("POST", "/api/snapshots/form", { month }),
   save: (input: Omit<SnapshotInput, "today">) => call<{ form: SnapshotForm }>("POST", "/api/snapshots/save", input),
   /** Sets the Account's first month per Holding (null: every month); replies with formMonth's form. */
