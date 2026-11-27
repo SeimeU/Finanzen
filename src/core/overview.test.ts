@@ -60,6 +60,7 @@ function setup() {
     etf: etf.id,
     cash: cash.id,
     bond: bond.id,
+    festgeld: festgeld.id,
     credit: creditHolding.id,
   };
 }
@@ -70,7 +71,7 @@ function save(document: WealthDocument, month: string, values: Partial<Omit<Snap
 
 describe("currentOverview", () => {
   it("is null without any Snapshot", () => {
-    expect(currentOverview(createEmptyDocument())).toBeNull();
+    expect(currentOverview(createEmptyDocument(), TODAY)).toBeNull();
   });
 
   it("shows the latest month's Net worth with the change versus last month and versus 12 months ago", () => {
@@ -78,7 +79,7 @@ describe("currentOverview", () => {
     let next = save(document, "2025-03", { holdingValues: [{ holdingId: cash, marketValue: 800_000 }] });
     next = save(next, "2026-02", { holdingValues: [{ holdingId: cash, marketValue: 1_000_000 }] });
     next = save(next, "2026-03", { holdingValues: [{ holdingId: cash, marketValue: 1_050_000 }] });
-    const overview = currentOverview(next)!;
+    const overview = currentOverview(next, TODAY)!;
     expect(overview.month).toBe("2026-03");
     expect(overview.netWorth).toBe(1_050_000);
     expect(overview.vsLastMonth).toEqual({ since: "2026-02", amount: 50_000, percent: 5 });
@@ -89,7 +90,7 @@ describe("currentOverview", () => {
     const { document, cash } = setup();
     let next = save(document, "2026-02", { holdingValues: [{ holdingId: cash, marketValue: 0 }] });
     next = save(next, "2026-03", { holdingValues: [{ holdingId: cash, marketValue: 10_000 }] });
-    const overview = currentOverview(next)!;
+    const overview = currentOverview(next, TODAY)!;
     expect(overview.vsLastMonth).toEqual({ since: "2026-02", amount: 10_000, percent: null });
     expect(overview.vs12MonthsAgo).toBeNull();
   });
@@ -98,7 +99,7 @@ describe("currentOverview", () => {
     const { document, credit } = setup();
     let next = save(document, "2026-02", { holdingValues: [{ holdingId: credit, marketValue: 200_000 }] });
     next = save(next, "2026-03", { holdingValues: [{ holdingId: credit, marketValue: 150_000 }] });
-    expect(currentOverview(next)!.vsLastMonth).toEqual({ since: "2026-02", amount: 50_000, percent: 25 });
+    expect(currentOverview(next, TODAY)!.vsLastMonth).toEqual({ since: "2026-02", amount: 50_000, percent: 25 });
   });
 
   it("splits current Net worth by Asset class, Liquidity and Institution, with debts counting negatively", () => {
@@ -111,7 +112,7 @@ describe("currentOverview", () => {
         { holdingId: credit, marketValue: 100_000 },
       ],
     });
-    const overview = currentOverview(next)!;
+    const overview = currentOverview(next, TODAY)!;
     expect(overview.netWorth).toBe(720_000);
     expect(overview.byAssetClass).toEqual({ etf: 500_000, cash: -80_000, bond: 300_000 });
     expect(overview.byLiquidity).toEqual({ available: 420_000, locked: 300_000 });
@@ -121,6 +122,24 @@ describe("currentOverview", () => {
     ]);
   });
 
+  it("counts a Locked Holding as Available once its Maturity date has passed", () => {
+    const { document, etf, bond, festgeld } = setup();
+    const next = save(document, "2026-03", {
+      holdingValues: [
+        { holdingId: etf, marketValue: 500_000 },
+        { holdingId: bond, marketValue: 300_000 },
+      ],
+    });
+    expect(currentOverview(next, "2030-06-30")!.byLiquidity).toEqual({ available: 500_000, locked: 300_000 });
+    expect(currentOverview(next, "2030-07-01")!.byLiquidity).toEqual({ available: 800_000 });
+
+    // Account-level values follow the Account's Default classification's Maturity date the same way.
+    let accountLevel = must(setPerHoldingFrom(document, { accountId: festgeld, month: "2026-04" })).document;
+    accountLevel = save(accountLevel, "2026-03", { accountValues: [{ accountId: festgeld, marketValue: 300_000 }] });
+    expect(currentOverview(accountLevel, "2030-06-30")!.byLiquidity).toEqual({ locked: 300_000 });
+    expect(currentOverview(accountLevel, "2030-07-01")!.byLiquidity).toEqual({ available: 300_000 });
+  });
+
   it("counts Account-level values under the Account's Default classification and Institution", () => {
     const { document, tr, raiffeisen, depot, bond } = setup();
     let next = must(setPerHoldingFrom(document, { accountId: depot, month: "2026-04" })).document;
@@ -128,7 +147,7 @@ describe("currentOverview", () => {
       holdingValues: [{ holdingId: bond, marketValue: 300_000 }],
       accountValues: [{ accountId: depot, marketValue: 650_000 }],
     });
-    const overview = currentOverview(next)!;
+    const overview = currentOverview(next, TODAY)!;
     expect(overview.byAssetClass).toEqual({ etf: 650_000, bond: 300_000 });
     expect(overview.byLiquidity).toEqual({ available: 650_000, locked: 300_000 });
     expect(overview.byInstitution).toEqual([
@@ -140,7 +159,7 @@ describe("currentOverview", () => {
   it("leaves out Institutions that hold nothing in the latest month", () => {
     const { document, tr, cash } = setup();
     const next = save(document, "2026-03", { holdingValues: [{ holdingId: cash, marketValue: 20_000 }] });
-    expect(currentOverview(next)!.byInstitution).toEqual([{ institutionId: tr, name: "Trade Republic", value: 20_000 }]);
+    expect(currentOverview(next, TODAY)!.byInstitution).toEqual([{ institutionId: tr, name: "Trade Republic", value: 20_000 }]);
   });
 });
 

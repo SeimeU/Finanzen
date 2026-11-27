@@ -1,6 +1,6 @@
-import type { WealthDocument, YearMonth } from "./document";
+import type { Classification, Liquidity, WealthDocument, YearMonth } from "./document";
 import { netWorthSeries, type NetWorthMonth } from "./snapshots";
-import { valuationOfAccount, valuationOfHolding } from "./structure";
+import { isMatured, valuationOfAccount, valuationOfHolding } from "./structure";
 
 /** Change in Net worth from `since` to the overview's month. */
 export type NetWorthChange = {
@@ -23,13 +23,14 @@ export type CurrentOverview = {
   /** null when the month 12 months earlier is before the first Snapshot. */
   vs12MonthsAgo: NetWorthChange | null;
   byAssetClass: NetWorthMonth["byAssetClass"];
+  /** As of today: a Locked value whose Maturity date has passed counts as Available (as on the maturity timeline). */
   byLiquidity: NetWorthMonth["byLiquidity"];
   /** Institutions with any value in the month, in document order. */
   byInstitution: InstitutionShare[];
 };
 
-/** Net worth in the latest month with its changes and breakdowns; null without any Snapshot. */
-export function currentOverview(document: WealthDocument): CurrentOverview | null {
+/** Net worth in the latest month with its changes and breakdowns; null without any Snapshot. `today` is "YYYY-MM-DD". */
+export function currentOverview(document: WealthDocument, today: string): CurrentOverview | null {
   const series = netWorthSeries(document);
   const latest = series.at(-1);
   if (!latest) return null;
@@ -49,9 +50,21 @@ export function currentOverview(document: WealthDocument): CurrentOverview | nul
     vsLastMonth: change(1),
     vs12MonthsAgo: change(12),
     byAssetClass: latest.byAssetClass,
-    byLiquidity: latest.byLiquidity,
+    byLiquidity: liquidityToday(document, latest, today),
     byInstitution: byInstitution(document, latest),
   };
+}
+
+/** The month's values split by Liquidity as of `today`: Locked money past its Maturity date is Available. */
+function liquidityToday(document: WealthDocument, month: NetWorthMonth, today: string): NetWorthMonth["byLiquidity"] {
+  const result: NetWorthMonth["byLiquidity"] = {};
+  const add = ({ classification, sign }: { classification: Classification; sign: number }, marketValue: number) => {
+    const liquidity: Liquidity = isMatured(classification, today) ? "available" : classification.liquidity;
+    result[liquidity] = (result[liquidity] ?? 0) + sign * marketValue;
+  };
+  for (const v of month.accounts) add(valuationOfAccount(document, v.accountId), v.marketValue);
+  for (const v of month.holdings) add(valuationOfHolding(document, v.holdingId), v.marketValue);
+  return result;
 }
 
 function byInstitution(document: WealthDocument, month: NetWorthMonth): InstitutionShare[] {

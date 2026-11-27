@@ -123,6 +123,11 @@ export function updateHolding(
  */
 export type Valuation = { classification: Classification; sign: 1 | -1 };
 
+/** A Locked value whose Maturity date is before `today` ("YYYY-MM-DD"): the money is Available now. */
+export function isMatured(classification: Classification, today: string): boolean {
+  return classification.liquidity === "locked" && classification.maturityDate !== null && classification.maturityDate < today;
+}
+
 export function valuationOfHolding(document: WealthDocument, holdingId: string): Valuation {
   const holding = document.holdings.find((h) => h.id === holdingId);
   if (!holding) throw new Error(`unknown Holding ${holdingId}`);

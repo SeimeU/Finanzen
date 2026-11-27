@@ -1,7 +1,7 @@
 import { accountIsOpen } from "./closing";
 import type { Holding, WealthDocument, YearMonth } from "./document";
 import { netWorthSeries } from "./snapshots";
-import { valuationOfHolding } from "./structure";
+import { isMatured, valuationOfHolding } from "./structure";
 
 /** One Locked Holding on the maturity timeline. */
 export type MaturityEntry = {
@@ -45,7 +45,7 @@ export function maturityTimeline(document: WealthDocument, today: string): Matur
         accountName: document.accounts.find((a) => a.id === holding.accountId)!.name,
         maturityDate,
         marketValue: value ? valuationOfHolding(document, holding.id).sign * value.marketValue : null,
-        matured: maturityDate < today,
+        matured: isMatured(holding.classification, today),
       };
     })
     .sort((a, b) => (a.maturityDate < b.maturityDate ? -1 : a.maturityDate > b.maturityDate ? 1 : 0));

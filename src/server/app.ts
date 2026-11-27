@@ -284,7 +284,7 @@ export function createApp(initialConfig: AppConfig): Server {
     // Monatsstand (Snapshots). `today` is the server's local date, passed into the core.
     "GET /api/net-worth": async () => (session ? ok({ series: netWorthSeries(session.document) }) : locked()),
     // Start screen headline figures and current breakdowns (ticket 09).
-    "GET /api/overview": async () => (session ? ok({ overview: currentOverview(session.document) }) : locked()),
+    "GET /api/overview": async () => (session ? ok({ overview: currentOverview(session.document, localToday()) }) : locked()),
     "GET /api/maturities": async () =>
       session ? ok({ timeline: maturityTimeline(session.document, localToday()) }) : locked(),
     // Konto detail and Einzahlung vs market change (ticket 11).
