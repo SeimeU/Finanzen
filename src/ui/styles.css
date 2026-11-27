@@ -379,3 +379,17 @@ button:disabled {
   display: flex;
   gap: 0.5rem;
 }
+
+.rules {
+  padding-left: 1.5rem;
+}
+
+.rules .rule {
+  align-items: center;
+  margin: 0.4rem 0;
+}
+
+.rule-form {
+  align-items: center;
+  max-width: none;
+}

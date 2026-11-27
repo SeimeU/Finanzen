@@ -2,8 +2,10 @@
 import type {
   AccountDetail,
   AccountInput,
+  CategorizationRule,
   CategoryKind,
   CategoryNode,
+  RuleInput,
   ContributionMonth,
   Classification,
   ClassifiedTransaction,
@@ -128,6 +130,17 @@ export const categoriesApi = {
   remove: (id: string) => call<Categories>("POST", "/api/categories/delete", { id }),
   setTransactionCategory: (transactionId: string, categoryId: string | null) =>
     call<object>("POST", "/api/transactions/category", { transactionId, categoryId }),
+};
+
+/** Categorization rules (Regeln). Every command replies with the whole list, in order. */
+type Rules = { rules: CategorizationRule[] };
+export const rulesApi = {
+  list: () => call<Rules>("GET", "/api/rules"),
+  create: (input: RuleInput) => call<Rules & { id: string }>("POST", "/api/rules/create", input),
+  update: (input: RuleInput & { id: string }) => call<Rules>("POST", "/api/rules/update", input),
+  remove: (id: string) => call<Rules>("POST", "/api/rules/delete", { id }),
+  move: (id: string, direction: "up" | "down") => call<Rules>("POST", "/api/rules/move", { id, direction }),
+  reapply: () => call<Rules & { changedCount: number }>("POST", "/api/rules/reapply", {}),
 };
 
 export const importProfilesApi = {
