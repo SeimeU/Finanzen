@@ -1,4 +1,4 @@
-import type { ImportRecord, Transaction, WealthDocument } from "../document";
+import type { ImportAccountChoice, ImportRecord, Transaction, WealthDocument } from "../document";
 import { fail, type Result } from "../result";
 import { decodeText } from "./csv";
 import { genericProfiles } from "./generic";
@@ -17,7 +17,11 @@ export type FilePreview =
       name: string;
       ok: true;
       profile: { id: string; label: string };
-      /** The Account the file is previewed against: the one asked for, else the only matching one, else null. */
+      /**
+       * The Account the file is previewed against: the one asked for, else the one last confirmed
+       * for this file name, else the Account a generic Import profile was saved for, else the only
+       * Account matching the format, else null.
+       */
       suggestedAccountId: string | null;
       dateRange: { from: string; to: string };
       newCount: number;
@@ -39,7 +43,7 @@ export function previewImport(
     const accountId =
       file.accountId && document.accounts.some((a) => a.id === file.accountId)
         ? file.accountId
-        : suggestAccount(document, read.profile);
+        : suggestAccount(document, file.name, read.profile);
     const { fresh } = splitDuplicates(document.transactions, accountId, read.transactions);
     const dates = read.transactions.map((t) => t.bookingDate).sort();
     return {
@@ -61,6 +65,7 @@ export type ImportedFile = { name: string; importId: string | null; newCount: nu
  * Stores the new Transactions of every file on its chosen Account, skipping duplicates
  * (also against earlier files of the same call). All or nothing: one unreadable file or
  * unknown Account rejects the whole call. A file with nothing new records no import.
+ * Each file's Account is remembered by file name, also when nothing new was in it.
  */
 export function confirmImport(
   document: WealthDocument,
@@ -71,6 +76,7 @@ export function confirmImport(
   }
   let transactions = document.transactions;
   let imports = document.imports;
+  let importAccountChoices = document.importAccountChoices;
   const files: ImportedFile[] = [];
   for (const file of input.files) {
     if (!document.accounts.some((a) => a.id === file.accountId)) {
@@ -78,6 +84,7 @@ export function confirmImport(
     }
     const read = readFile(document, file);
     if (!read.ok) return fail(read.error.code, `${file.name}: ${read.error.message}`);
+    importAccountChoices = rememberChoice(importAccountChoices, { fileName: file.name, accountId: file.accountId });
     const { fresh, duplicateCount } = splitDuplicates(transactions, file.accountId, read.transactions);
     if (fresh.length === 0) {
       files.push({ name: file.name, importId: null, newCount: 0, duplicateCount });
@@ -104,7 +111,7 @@ export function confirmImport(
     imports = [...imports, record];
     files.push({ name: file.name, importId, newCount: added.length, duplicateCount });
   }
-  return { ok: true, document: { ...document, transactions, imports }, files };
+  return { ok: true, document: { ...document, transactions, imports, importAccountChoices }, files };
 }
 
 /** Removes an import and exactly the Transactions it stored. */
@@ -149,13 +156,19 @@ function readFile(document: WealthDocument, file: ImportFileInput): ReadFile {
   return { ok: true, profile, transactions: parsed.transactions };
 }
 
-function suggestAccount(document: WealthDocument, profile: ImportProfile): string | null {
+function suggestAccount(document: WealthDocument, fileName: string, profile: ImportProfile): string | null {
+  const remembered = document.importAccountChoices.find((c) => c.fileName === fileName)?.accountId;
+  if (remembered && document.accounts.some((a) => a.id === remembered)) return remembered;
   if (profile.accountId && document.accounts.some((a) => a.id === profile.accountId)) return profile.accountId;
   const institutionIds = new Set(
     document.institutions.filter((i) => profile.matchesInstitution(i.name)).map((i) => i.id),
   );
   const candidates = document.accounts.filter((a) => institutionIds.has(a.institutionId));
   return candidates.length === 1 ? candidates[0]!.id : null;
+}
+
+function rememberChoice(choices: ImportAccountChoice[], choice: ImportAccountChoice): ImportAccountChoice[] {
+  return [...choices.filter((c) => c.fileName !== choice.fileName), choice];
 }
 
 /**

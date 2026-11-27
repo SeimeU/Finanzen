@@ -209,7 +209,7 @@ function readText(
       counterpartyIban: iban === "" ? null : iban,
       paymentReference: get(columns.paymentReference),
       purpose: get(columns.purpose),
-      origin: { category: null, type: null, transactionId: null, feeCents: null, taxCents: null, securityName: null, isin: null },
+      origin: { category: null, type: null, transactionId: null, feeCents: null, taxCents: null, securityName: null, isin: null, bookingText: null, valueDate: null },
     });
   }
   return { ok: true, transactions, columnCount, header };

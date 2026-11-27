@@ -19,6 +19,16 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
   3: (document) => ({ ...document, schemaVersion: 4, transactions: [], imports: [] }),
   // 4 → 5: user-defined (generic) Import profiles.
   4: (document) => ({ ...document, schemaVersion: 5, importProfiles: [] }),
+  // 5 → 6: ELBA origin fields on Transactions and the Account remembered per import file name.
+  5: (document) => ({
+    ...document,
+    schemaVersion: 6,
+    transactions: (document.transactions as { origin: object }[]).map((t) => ({
+      ...t,
+      origin: { ...t.origin, bookingText: null, valueDate: null },
+    })),
+    importAccountChoices: [],
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

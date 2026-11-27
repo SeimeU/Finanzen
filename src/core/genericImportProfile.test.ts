@@ -78,6 +78,22 @@ describe("generic Import profiles", () => {
     ]);
   });
 
+  it("suggests the Account asked for, else the one remembered for the file name, else the profile's own Account", () => {
+    const { document, giro, savings } = withTwoAccounts();
+    const saved = must(saveImportProfile(document, { accountId: giro, settings: SEMICOLON_SETTINGS, sample: utf8(SEMICOLON_CSV) }));
+    const suggested = (doc: WealthDocument, name: string, accountId?: string) => {
+      const { files } = must(previewImport(doc, { files: [{ name, bytes: utf8(SEMICOLON_CSV), accountId }] }));
+      return files[0]!.ok ? files[0]!.suggestedAccountId : "unreadable";
+    };
+    expect(suggested(saved.document, "erste.csv")).toBe(giro);
+
+    const imported = must(confirmImport(saved.document, { importedAt: IMPORTED_AT, files: [{ name: "erste.csv", bytes: utf8(SEMICOLON_CSV), accountId: savings }] }));
+    expect(suggested(imported.document, "erste.csv")).toBe(savings);
+    expect(suggested(imported.document, "andere.csv")).toBe(giro);
+    expect(suggested(imported.document, "erste.csv", giro)).toBe(giro);
+    expect(searchTransactions(imported.document)[0]!.origin).toMatchObject({ bookingText: null, valueDate: null });
+  });
+
   it("reads a headerless comma file with decimal points and ISO dates, recognized by its column count", () => {
     const { document, savings } = withTwoAccounts();
     const csv = '2026-06-01,"1,250.00",Zinsen Bank,Zinsgutschrift\n2026-06-02,-3.5,Shop,"Kauf, online"\n';

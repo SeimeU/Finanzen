@@ -15,7 +15,11 @@ export type WealthDocument = {
   imports: ImportRecord[];
   /** User-defined (generic) Import profiles, at most one per Account. */
   importProfiles: GenericImportProfile[];
+  /** The Account last confirmed for each import file name; suggested when that name is dropped again. */
+  importAccountChoices: ImportAccountChoice[];
 };
+
+export type ImportAccountChoice = { fileName: string; accountId: string };
 
 export type Institution = { id: string; name: string };
 
@@ -114,6 +118,10 @@ export type TransactionOrigin = {
   taxCents: number | null;
   securityName: string | null;
   isin: string | null;
+  /** ELBA: the raw Buchungstext the other fields were split from. */
+  bookingText: string | null;
+  /** ELBA: the Valutadatum, "YYYY-MM-DD". */
+  valueDate: string | null;
 };
 
 export type ImportRecord = {
@@ -164,7 +172,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -176,5 +184,6 @@ export function createEmptyDocument(): WealthDocument {
     transactions: [],
     imports: [],
     importProfiles: [],
+    importAccountChoices: [],
   };
 }
