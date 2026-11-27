@@ -43,11 +43,11 @@ export class ApiError extends Error {
 }
 
 async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method,
-    headers: body === undefined ? undefined : { "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  // The server only accepts JSON POSTs (cross-site protection), so a POST always carries a JSON body.
+  const response = await fetch(
+    path,
+    method === "POST" ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) } : { method },
+  );
   const json = await response.json();
   if (!response.ok) throw new ApiError(json.error.code, json.error.message);
   return json as T;

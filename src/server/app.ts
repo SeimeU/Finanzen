@@ -89,11 +89,20 @@ export function createApp(initialConfig: AppConfig): Server {
   const lockTimeoutMs = config.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
   let lockTimer: NodeJS.Timeout | undefined;
 
+  // Every request handler (and the auto-lock) runs one at a time, in arrival order: a command
+  // reads `session.document` and saves, and nothing else may change the session in between.
+  let queue: Promise<unknown> = Promise.resolve();
+  function exclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = queue.then(task);
+    queue = run.catch(() => undefined);
+    return run;
+  }
+
   // Session lock: any request except the status poll counts as use and restarts the countdown.
   function registerActivity() {
     clearTimeout(lockTimer);
     if (!session) return;
-    lockTimer = setTimeout(() => (session = null), lockTimeoutMs);
+    lockTimer = setTimeout(() => void exclusive(async () => void (session = null)), lockTimeoutMs);
     lockTimer.unref();
   }
 
@@ -404,12 +413,13 @@ export function createApp(initialConfig: AppConfig): Server {
 
   return createServer(async (request, response) => {
     try {
+      const refusal = refuseCrossSite(request);
+      if (refusal) return sendJson(response, refusal);
       const path = new URL(request.url ?? "/", "http://localhost").pathname;
       if (path.startsWith("/api/")) {
-        const handler = routes[`${request.method} ${path}`];
-        const reply = handler
-          ? await handler(await readJson(request))
-          : error(404, "not-found", "Unbekannter Endpunkt.");
+        const handler = routes[`${request.method} ${path}`] as Handler | undefined;
+        const body = handler ? await readJson(request) : {};
+        const reply = handler ? await exclusive(() => handler(body)) : error(404, "not-found", "Unbekannter Endpunkt.");
         if (`${request.method} ${path}` !== "GET /api/status") registerActivity();
         sendJson(response, reply);
       } else {
@@ -420,6 +430,28 @@ export function createApp(initialConfig: AppConfig): Server {
       sendJson(response, error(500, "internal", "Interner Fehler."));
     }
   });
+}
+
+/**
+ * Refuses what a page on another site could send: a Host other than this server's own
+ * address (DNS rebinding), an Origin other than the app's own, and a POST that is not JSON
+ * (a cross-site form can only send form or text bodies without a CORS preflight).
+ */
+function refuseCrossSite(request: IncomingMessage): Reply | null {
+  const port = request.socket.localPort;
+  const host = request.headers.host ?? "";
+  if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) {
+    return error(403, "forbidden-host", "Zugriff nur über http://127.0.0.1 erlaubt.");
+  }
+  const origin = request.headers.origin;
+  if (origin !== undefined && origin !== `http://${host}`) {
+    return error(403, "forbidden-origin", "Zugriff von einer anderen Seite ist nicht erlaubt.");
+  }
+  const mediaType = (request.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
+  if (request.method === "POST" && mediaType !== "application/json") {
+    return error(415, "json-required", "Anfragen müssen JSON senden.");
+  }
+  return null;
 }
 
 /** The Prognose replies: the stored assumptions (also without any Snapshot) and the Projection (null then). */

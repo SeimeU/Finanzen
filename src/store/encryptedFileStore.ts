@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt } from "node:crypto";
-import { open, readFile, rename } from "node:fs/promises";
+import { open, readFile, rename, rm } from "node:fs/promises";
 import { keepBackupOf } from "./backupFiles";
+import { temporaryPathFor } from "./temporaryPath";
 
 /**
  * Encrypted file store (ADR 0002). Stores any JSON value; it knows nothing
@@ -62,7 +63,7 @@ export async function load(path: string, password: string): Promise<unknown> {
 }
 
 /**
- * Encrypts and writes atomically: a temporary file is written, synced, then renamed over `path`.
+ * Encrypts and writes atomically: a uniquely named temporary file is written, synced, then renamed over `path`.
  * The previous file is first kept as a backup (see ./backupFiles.ts).
  */
 export async function save(path: string, password: string, value: unknown): Promise<void> {
@@ -95,14 +96,17 @@ export async function writeEncrypted(
     ciphertext,
   ]);
 
-  const temporaryPath = `${path}.tmp`;
-  const handle = await open(temporaryPath, "w");
+  const temporaryPath = temporaryPathFor(path);
+  const handle = await open(temporaryPath, "wx");
   try {
     await handle.writeFile(bytes);
     await handle.sync();
-  } finally {
+  } catch (e) {
     await handle.close();
+    await rm(temporaryPath, { force: true });
+    throw e;
   }
+  await handle.close();
   if (keepBackup) await keepBackupOf(path);
   await rename(temporaryPath, path);
 }

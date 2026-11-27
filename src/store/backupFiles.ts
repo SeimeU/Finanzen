@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readdir, rename, rm } from "node:fs/promises";
+import { copyFile, mkdir, open, readdir, rename, rm } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
+import { temporaryPathFor } from "./temporaryPath";
 
 /**
  * Backup files of a data file. Before each save the previous data file is copied,
@@ -37,17 +38,28 @@ export async function keepBackupOf(dataFile: string, now = new Date()): Promise<
   const dir = backupDir(dataFile);
   await mkdir(dir, { recursive: true });
   const stamp = now.toISOString().replace(/:/g, "-").replace(".", "-");
-  let sequence = 0;
-  let target: string;
-  do {
-    target = join(dir, `${prefix(dataFile)}${stamp}-${String(sequence++).padStart(3, "0")}.dat`);
-  } while (existsSync(target));
-  const temporaryPath = `${target}.tmp`;
+  const temporaryPath = temporaryPathFor(join(dir, prefix(dataFile) + stamp));
   await copyFile(dataFile, temporaryPath);
-  await rename(temporaryPath, target);
+  // Claim the first free sequence number by creating it exclusively ("wx" fails if the name is
+  // taken, even by a concurrent save), then move the finished copy over the claimed name.
+  try {
+    for (let sequence = 0; ; sequence++) {
+      const target = join(dir, `${prefix(dataFile)}${stamp}-${String(sequence).padStart(3, "0")}.dat`);
+      const claimed = await open(target, "wx").catch((e: NodeJS.ErrnoException) => {
+        if (e.code === "EEXIST") return null;
+        throw e;
+      });
+      if (!claimed) continue;
+      await claimed.close();
+      await rename(temporaryPath, target);
+      break;
+    }
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
 
   const names = await backupNames(dataFile);
-  for (const name of names.slice(MAX_BACKUPS)) await rm(join(dir, name));
+  for (const name of names.slice(MAX_BACKUPS)) await rm(join(dir, name), { force: true });
 }
 
 /** The backups of the data file, newest first. */

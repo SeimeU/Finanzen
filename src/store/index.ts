@@ -4,3 +4,4 @@ export { BackupNotFoundError, MAX_BACKUPS, listBackups, type Backup } from "./ba
 export { restoreBackup } from "./backups";
 export { ExportTargetExistsError, exportUnencrypted } from "./export";
 export { TargetExistsError, changePassword, moveDataFile } from "./dataFileMaintenance";
+export { temporaryPathFor } from "./temporaryPath";
