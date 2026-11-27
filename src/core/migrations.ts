@@ -80,6 +80,16 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
       }),
     };
   },
+  // 13 → 14: an import covers whole months, from its first booking's month to its last's.
+  13: (document) => ({
+    ...document,
+    schemaVersion: 14,
+    imports: (document.imports as { coveredFrom: string; coveredTo: string }[]).map((i) => ({
+      ...i,
+      coveredFrom: i.coveredFrom.slice(0, 7),
+      coveredTo: i.coveredTo.slice(0, 7),
+    })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

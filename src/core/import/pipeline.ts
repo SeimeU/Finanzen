@@ -106,8 +106,8 @@ export function confirmImport(
     const dates = read.transactions.map((t) => t.bookingDate).sort();
     const record: ImportRecord = {
       id: importId,
-      coveredFrom: dates[0]!,
-      coveredTo: dates.at(-1)!,
+      coveredFrom: dates[0]!.slice(0, 7),
+      coveredTo: dates.at(-1)!.slice(0, 7),
       fileName: file.name,
       profileId: read.profile.id,
       accountId: file.accountId,

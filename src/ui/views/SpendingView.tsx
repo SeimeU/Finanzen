@@ -275,8 +275,8 @@ function AccountFlagsSection(props: { structure: InstitutionView[]; onChange: (a
     <section aria-labelledby={headingId}>
       <h2 id={headingId}>Konten mit Einnahmen und Ausgaben</h2>
       <p className="meta">
-        Die Sparquote eines Monats wird nur gezeigt, wenn die Umsätze jedes gewählten Kontos den ganzen Monat abdecken
-        (vom ersten bis zum letzten Tag, nach den Buchungsdaten der importierten Dateien).
+        Die Sparquote eines Monats wird nur gezeigt, wenn für jedes gewählte Konto Umsätze dieses Monats importiert sind.
+        Eine importierte Datei deckt jeden ganzen Monat ab, vom Monat ihrer ersten bis zum Monat ihrer letzten Buchung.
       </p>
       {accounts.length === 0 && <p className="empty">Noch keine Konten angelegt.</p>}
       {accounts.map((a) => (

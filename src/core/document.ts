@@ -230,11 +230,12 @@ export type ImportRecord = {
   transactionCount: number;
   duplicateCount: number;
   /**
-   * The earliest and latest booking date ("YYYY-MM-DD") among all the file's rows, duplicates
-   * included: the stretch the file covers on its Account, for the Savings rate's completeness.
+   * The months of the earliest and latest booking among all the file's rows, duplicates included.
+   * The file counts as covering every whole month from `coveredFrom` to `coveredTo` on its
+   * Account (for the Savings rate's completeness), even without bookings on the 1st or last day.
    */
-  coveredFrom: string;
-  coveredTo: string;
+  coveredFrom: YearMonth;
+  coveredTo: YearMonth;
 };
 
 export const GENERIC_SEPARATORS = [";", ",", "\t", "|"] as const;
@@ -273,7 +274,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 13;
+export const CURRENT_SCHEMA_VERSION = 14;
 
 export function createEmptyDocument(): WealthDocument {
   return {

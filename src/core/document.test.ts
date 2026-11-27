@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(13);
+    expect(CURRENT_SCHEMA_VERSION).toBe(14);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -90,7 +90,17 @@ describe("data document", () => {
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
   });
 
-  it("a version 12 document gets no Account flagged as carrying income or spending, and each import the date range of its Transactions", () => {
+  it("a version 13 document's import ranges become the months of their first and last booking", () => {
+    const v13 = {
+      ...createEmptyDocument(),
+      schemaVersion: 13,
+      imports: [{ id: "imp1", accountId: "a1", coveredFrom: "2026-01-31", coveredTo: "2026-03-05" }],
+    };
+    const result = loadDocument(v13);
+    expect(result.ok && result.document.imports).toMatchObject([{ id: "imp1", coveredFrom: "2026-01", coveredTo: "2026-03" }]);
+  });
+
+  it("a version 12 document gets no Account flagged as carrying income or spending, and each import the months of its Transactions", () => {
     const account = { id: "a1", institutionId: "i1", name: "Giro" };
     const v12 = {
       ...createEmptyDocument(),
@@ -107,7 +117,7 @@ describe("data document", () => {
     expect(result.ok && result.document).toMatchObject({
       schemaVersion: CURRENT_SCHEMA_VERSION,
       accounts: [{ ...account, carriesCashFlow: false }],
-      imports: [{ id: "imp1", accountId: "a1", coveredFrom: "2026-01-31", coveredTo: "2026-03-05" }],
+      imports: [{ id: "imp1", accountId: "a1", coveredFrom: "2026-01", coveredTo: "2026-03" }],
     });
   });
 

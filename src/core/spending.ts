@@ -123,8 +123,8 @@ export type CashFlowMonth = {
   /** Uncategorized Transactions counted in income or expenses this month. */
   uncategorizedCount: number;
   /**
-   * Complete: every open Account flagged as carrying income or spending has imports covering
-   * every day of the month. Without any flagged Account no month is complete.
+   * Complete: every open Account flagged as carrying income or spending has an import covering
+   * the month (see ImportRecord.coveredFrom). Without any flagged Account no month is complete.
    */
   complete: boolean;
   incompleteReason: "no-accounts-flagged" | "accounts-missing" | null;
@@ -187,11 +187,11 @@ export function setAccountCarriesCashFlow(
   };
 }
 
-type DateRange = { from: string; to: string };
+type MonthRange = { from: YearMonth; to: YearMonth };
 
-/** Per Account: the date ranges its imported files cover, merged where they overlap or adjoin. */
-function coverageByAccount(document: WealthDocument): Map<string, DateRange[]> {
-  const byAccount = new Map<string, DateRange[]>();
+/** Per Account: the month ranges its imported files cover, merged where they overlap or adjoin. */
+function coverageByAccount(document: WealthDocument): Map<string, MonthRange[]> {
+  const byAccount = new Map<string, MonthRange[]>();
   const sorted = document.imports
     .filter((i) => i.coveredFrom && i.coveredTo)
     .map((i) => ({ accountId: i.accountId, from: i.coveredFrom, to: i.coveredTo }))
@@ -199,7 +199,7 @@ function coverageByAccount(document: WealthDocument): Map<string, DateRange[]> {
   for (const range of sorted) {
     const ranges = byAccount.get(range.accountId) ?? [];
     const last = ranges.at(-1);
-    if (last && range.from <= addDays(last.to, 1)) {
+    if (last && range.from <= nextMonth(last.to)) {
       if (range.to > last.to) last.to = range.to;
     } else ranges.push({ from: range.from, to: range.to });
     byAccount.set(range.accountId, ranges);
@@ -207,15 +207,8 @@ function coverageByAccount(document: WealthDocument): Map<string, DateRange[]> {
   return byAccount;
 }
 
-function covers(ranges: DateRange[], month: YearMonth): boolean {
-  const first = `${month}-01`;
-  const last = addDays(`${nextMonth(month)}-01`, -1);
-  return ranges.some((r) => r.from <= first && r.to >= last);
-}
-
-function addDays(isoDate: string, days: number): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
+function covers(ranges: MonthRange[], month: YearMonth): boolean {
+  return ranges.some((r) => r.from <= month && r.to >= month);
 }
 
 /** Which row a Transaction's Category lands in; undefined: not shown at this level. */

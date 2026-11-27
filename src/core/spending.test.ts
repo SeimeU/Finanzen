@@ -205,22 +205,39 @@ describe("incomplete months", () => {
     });
   });
 
-  it("a flagged Account whose imports do not cover the whole month makes it incomplete instead of showing a Savings rate", () => {
-    const { document, giro, tr: trAccount } = november();
-    // Trade Republic's file covers only 21–30 November.
-    expect(cashFlowMonths(flag(document, giro, trAccount))[0]).toMatchObject({
+  it("a flagged Account whose imports do not cover the month makes it incomplete instead of showing a Savings rate", () => {
+    const { document, giro, tr: trAccount } = twoAccounts();
+    let d = importFile(document, giro, "nov.csv", [elba("03.11.2026", "1.000,00", "Gehalt")]);
+    // Trade Republic's only file is from October.
+    d = importFile(d, trAccount, "tr.csv", [TR_HEADER, tr("2026-10-15", "CASH", "INTEREST_PAYMENT", "1.00", "Zinsen")]);
+    expect(cashFlowMonths(flag(d, giro, trAccount)).at(-1)).toMatchObject({
+      month: "2026-11",
       complete: false,
       incompleteReason: "accounts-missing",
       missingAccounts: [{ id: trAccount, name: "Verrechnungskonto" }],
       savingsRate: null,
-      income: 301200,
+      income: 100000,
     });
+  });
+
+  it("an import covers every whole month from the month of its first booking to the month of its last", () => {
+    const { document, giro, tr: trAccount } = november();
+    // Trade Republic's file starts on 21 November and has no booking on the 1st: November still counts.
+    expect(cashFlowMonths(flag(document, giro, trAccount))[0]).toMatchObject({ complete: true, missingAccounts: [] });
+
+    const { document: empty, giro: g } = twoAccounts();
+    const d = importFile(empty, g, "herbst.csv", [elba("05.09.2026", "100,00", "A"), elba("20.11.2026", "-10,00", "B")]);
+    expect(cashFlowMonths(flag(d, g)).map((m) => `${m.month}: ${m.complete}`)).toEqual([
+      "2026-09: true",
+      "2026-10: true",
+      "2026-11: true",
+    ]);
   });
 
   it("a month between two imports of a flagged Account is incomplete, the months the files cover are complete", () => {
     const { document, giro } = twoAccounts();
-    let d = importFile(document, giro, "sep.csv", [elba("01.09.2026", "100,00", "A"), elba("30.09.2026", "-10,00", "B")]);
-    d = importFile(d, giro, "nov.csv", [elba("01.11.2026", "100,00", "C"), elba("30.11.2026", "-20,00", "D")]);
+    let d = importFile(document, giro, "sep.csv", [elba("03.09.2026", "100,00", "A"), elba("20.09.2026", "-10,00", "B")]);
+    d = importFile(d, giro, "nov.csv", [elba("04.11.2026", "100,00", "C"), elba("28.11.2026", "-20,00", "D")]);
     expect(cashFlowMonths(flag(d, giro)).map((m) => `${m.month}: ${m.complete}`)).toEqual([
       "2026-09: true",
       "2026-10: false",
