@@ -5,8 +5,8 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(4);
-    expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [] });
+    expect(CURRENT_SCHEMA_VERSION).toBe(5);
+    expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
   it("loading a current document returns it unchanged", () => {
@@ -20,10 +20,10 @@ describe("data document", () => {
     expect(result).toEqual({ ok: true, document: createEmptyDocument() });
   });
 
-  it("a version 3 document gets Account-level values: none recorded, every Account per Holding", () => {
+  it("a version 4 document gets Account-level values: none recorded, every Account per Holding", () => {
     const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {} };
     const result = loadDocument({
-      schemaVersion: 3,
+      schemaVersion: 4,
       institutions: [{ id: "i1", name: "Bank" }],
       accounts: [account],
       holdings: [],

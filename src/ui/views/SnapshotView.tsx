@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { SnapshotForm, SnapshotFormAccount, SnapshotFormHolding } from "../../core";
 import { ApiError, snapshotsApi } from "../api";
 import { formatEur, formatEurInput, formatMonth, parseEur } from "../format";
+import { MonthNotesSection } from "./MonthNotesSection";
 
 /**
  * What the owner typed for one Holding, or for one Account's Kontostand gesamt
@@ -215,6 +216,7 @@ export function SnapshotView() {
           )}
         </div>
       </form>
+      {/^\d{4}-\d{2}$/.test(month) && <MonthNotesSection month={month} />}
     </main>
   );
 }

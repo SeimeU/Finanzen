@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountDetail,
+  contributionSplit,
   createAccount,
   createEmptyDocument,
   createHolding,
@@ -272,5 +274,51 @@ describe("Monatsstand form with Account-level values", () => {
     // Not possible once values per Holding exist in or before this month.
     expect(depotIn(snapshotForm(next, "2026-03", TODAY)).accountLevelSwitch).toBeNull();
     expect(depotIn(snapshotForm(next, "2026-05", TODAY)).accountLevelSwitch).toBeNull();
+  });
+});
+
+describe("Konto detail and Contribution split with Account-level values", () => {
+  function history() {
+    const { document, depot, etf, cash, credit } = setup();
+    let next = switchAt(document, depot, "2026-01");
+    next = switchAt(next, credit, "2026-01");
+    next = save(next, "2025-11", {
+      holdingValues: [],
+      accountValues: [
+        { accountId: depot, marketValue: 700_000 },
+        { accountId: credit, marketValue: 100_000 },
+      ],
+    });
+    next = save(next, "2025-12", { holdingValues: [], accountValues: [{ accountId: depot, marketValue: 720_000 }] });
+    next = save(next, "2026-01", {
+      holdingValues: [
+        { holdingId: etf, marketValue: 730_000, contribution: 5_000 },
+        { holdingId: cash, marketValue: 10_000 },
+      ],
+    });
+    return { document: next, depot, credit };
+  }
+
+  it("the Konto's value history includes its months with a Kontostand gesamt", () => {
+    const { document, depot, credit } = history();
+    expect(accountDetail(document, depot)!.series).toEqual([
+      { month: "2025-11", value: 700_000, contribution: 0, notUpdated: false },
+      { month: "2025-12", value: 720_000, contribution: 0, notUpdated: false },
+      { month: "2026-01", value: 740_000, contribution: 5_000, notUpdated: false },
+    ]);
+    // The debt's Kontostand gesamt counts negatively, carried forward until its switch.
+    expect(accountDetail(document, credit)!.series).toEqual([
+      { month: "2025-11", value: -100_000, contribution: 0, notUpdated: false },
+      { month: "2025-12", value: -100_000, contribution: 0, notUpdated: true },
+    ]);
+  });
+
+  it("an investment Account's Kontostand gesamt change is market change, also across the switch", () => {
+    const { document } = history();
+    expect(contributionSplit(document)).toEqual([
+      { month: "2025-12", netWorthChange: 20_000, contribution: 0, marketChange: 20_000, otherChange: 0 },
+      // Depot 720.000 (ETF) became MSCI World 730.000 (5.000 paid in) and 10.000 cash; the Kredit has no value any more.
+      { month: "2026-01", netWorthChange: 120_000, contribution: 5_000, marketChange: 5_000, otherChange: 110_000 },
+    ]);
   });
 });

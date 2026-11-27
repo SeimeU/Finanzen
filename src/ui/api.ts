@@ -1,12 +1,20 @@
 // The only place the UI talks to the server. Same origin, JSON in and out.
 import type {
+  AccountDetail,
   AccountInput,
+  ContributionMonth,
   Classification,
+  FilePreview,
   HoldingInput,
+  ImportedFile,
+  ImportRecord,
   InstitutionView,
+  MonthNotes,
   NetWorthMonth,
   SnapshotForm,
   SnapshotInput,
+  Transaction,
+  TransactionFilter,
 } from "../core";
 
 export type AppState = "new" | "locked" | "unlocked";
@@ -76,3 +84,41 @@ export const backupsApi = {
   exportSuggestion: () => call<{ suggestedPath: string }>("GET", "/api/export"),
   exportUnencrypted: (path: string) => call<{ path: string }>("POST", "/api/export", { path }),
 };
+
+/** Notes and Events. Every call replies with the whole chronological list. Amounts in cents. */
+export const notesApi = {
+  list: () => call<{ notes: MonthNotes[] }>("GET", "/api/notes"),
+  setNote: (input: { month: string; note: string }) => call<{ notes: MonthNotes[] }>("POST", "/api/notes/set", input),
+  addEvent: (input: { month: string; label: string; amount: number }) =>
+    call<{ notes: MonthNotes[]; id: string }>("POST", "/api/events/add", input),
+  updateEvent: (input: { id: string; label: string; amount: number }) =>
+    call<{ notes: MonthNotes[] }>("POST", "/api/events/update", input),
+  deleteEvent: (input: { id: string }) => call<{ notes: MonthNotes[] }>("POST", "/api/events/delete", input),
+};
+/** Konto detail and the Einzahlung vs market change split (ticket 11). */
+export const accountDetailApi = {
+  detail: (id: string) => call<{ detail: AccountDetail }>("POST", "/api/accounts/detail", { id }),
+  contributions: () => call<{ months: ContributionMonth[] }>("GET", "/api/contributions"),
+};
+
+/** A dropped CSV file on its way to the server. */
+export type UploadFile = { name: string; contentBase64: string };
+
+// CSV import and the Transaction list (Umsätze).
+export const importApi = {
+  preview: (files: (UploadFile & { accountId?: string | null })[]) =>
+    call<{ files: FilePreview[] }>("POST", "/api/import/preview", { files }),
+  confirm: (files: (UploadFile & { accountId: string })[]) =>
+    call<{ files: ImportedFile[]; imports: ImportRecord[] }>("POST", "/api/import/confirm", { files }),
+  undo: (importId: string) => call<{ imports: ImportRecord[] }>("POST", "/api/import/undo", { importId }),
+  imports: () => call<{ imports: ImportRecord[] }>("GET", "/api/imports"),
+  searchTransactions: (filter: TransactionFilter) =>
+    call<{ transactions: Transaction[] }>("POST", "/api/transactions/search", filter),
+};
+
+export async function toUploadFile(file: File): Promise<UploadFile> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { name: file.name, contentBase64: btoa(binary) };
+}

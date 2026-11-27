@@ -12,9 +12,24 @@ export {
   type Holding,
   type Institution,
   type HoldingValue,
+  type MonthEvent,
   type Liquidity,
   type Snapshot,
   type YearMonth,
 } from "./document";
 export * from "./structure";
 export * from "./snapshots";
+export * from "./notes";
+export * from "./accountDetail";
+export { type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
+export {
+  confirmImport,
+  listImports,
+  previewImport,
+  undoImport,
+  type FilePreview,
+  type ImportedFile,
+  type ImportFileInput,
+} from "./import/pipeline";
+export type { ImportProfile } from "./import/profile";
+export { searchTransactions, type TransactionFilter } from "./transactions";
