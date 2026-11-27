@@ -11,6 +11,7 @@ import {
   searchTransactions,
   setTransactionCategory,
   uncategorizedTransactions,
+  type ClassifiedTransaction,
   type Result,
   type WealthDocument,
 } from "./index";
@@ -49,20 +50,19 @@ const categoryPath = (document: WealthDocument, id: string): string => {
   throw new Error(`no Category ${id}`);
 };
 
-/** purpose → a readable classification, e.g. "Kapitalerträge → Zinsen (income)" or "Kauf". */
+/** A readable classification, e.g. "Kapitalerträge → Zinsen (income, bank)" or "Kauf (excluded)". */
+function classificationText(document: WealthDocument, t: ClassifiedTransaction): string {
+  const c = t.classification;
+  return c.kind === "category"
+    ? `${categoryPath(document, c.categoryId)} (${c.cashFlow}, ${c.source})`
+    : c.kind === "trade"
+      ? `${c.direction === "buy" ? "Kauf" : "Verkauf"} (${c.cashFlow})`
+      : `Unkategorisiert (${c.cashFlow})`;
+}
+
+/** purpose → its readable classification. */
 function classified(document: WealthDocument): Record<string, string> {
-  return Object.fromEntries(
-    searchTransactions(document).map((t) => {
-      const c = t.classification;
-      const text =
-        c.kind === "category"
-          ? `${categoryPath(document, c.categoryId)} (${c.cashFlow}, ${c.source})`
-          : c.kind === "trade"
-            ? `${c.direction === "buy" ? "Kauf" : "Verkauf"} (${c.cashFlow})`
-            : `Unkategorisiert (${c.cashFlow})`;
-      return [t.purpose, text];
-    }),
-  );
+  return Object.fromEntries(searchTransactions(document).map((t) => [t.purpose, classificationText(document, t)]));
 }
 
 const fixture = readFileSync(join(import.meta.dirname, "import", "fixtures", "trade-republic-basic.csv"));
@@ -92,6 +92,18 @@ describe("Trade Republic classification", () => {
       Steuerkorrektur: "Steuern → Kapitalertragsteuer (expense, bank)",
       Steuererstattung: "Steuern → Kapitalertragsteuer (expense, bank)",
       "Storno Zinsen": "Kapitalerträge → Zinsen (income, bank)",
+    });
+  });
+
+  it("Saveback is income under Einkommen → Prämien (not a Trade), interest Kapitalerträge, card payments wait in the inbox", () => {
+    const document = imported(readFileSync(join(import.meta.dirname, "import", "fixtures", "trade-republic-cash.csv")));
+    expect(
+      Object.fromEntries(searchTransactions(document).map((t) => [t.origin.type + " " + t.date, classificationText(document, t)])),
+    ).toEqual({
+      "BENEFITS_SAVEBACK 2026-10-02": "Einkommen → Prämien (income, bank)",
+      "INTEREST_PAYMENT 2026-10-31": "Kapitalerträge → Zinsen (income, bank)",
+      "CARD_TRANSACTION 2026-10-14": "Unkategorisiert (unknown)",
+      "CARD_TRANSACTION 2026-10-20": "Unkategorisiert (unknown)",
     });
   });
 

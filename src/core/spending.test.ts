@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   cashFlowMonths,
@@ -10,6 +12,8 @@ import {
   createEmptyDocument,
   createInstitution,
   setTransactionCategory,
+  deleteCategory,
+  undoImport,
   type Result,
   type WealthDocument,
 } from "./index";
@@ -121,6 +125,65 @@ describe("spending and income by Category", () => {
     expect(rows(categorySpending(document, { period: "2026-11", kind: "expense", parentId: "wohnen" }))).toEqual([
       "Miete: 90000",
       "Wohnen (ohne Unterkategorie): 10000",
+    ]);
+  });
+});
+
+describe("tax Trade Republic withheld (the tax column)", () => {
+  /** October on Trade Republic: Saveback 20,00 (tax −5,00), interest 10,24 (tax −2,56), two card payments. */
+  function october() {
+    const { document, tr: account } = twoAccounts();
+    const bytes = readFileSync(join(import.meta.dirname, "import", "fixtures", "trade-republic-cash.csv"));
+    const imported = must(confirmImport(document, { importedAt: IMPORTED_AT, files: [{ name: "tr.csv", bytes, accountId: account }] }));
+    return { document: imported.document, account, bytes, importId: imported.files[0]!.importId! };
+  }
+
+  it("the gross amount counts under the row's Category and the tax as an expense under Steuern → Kapitalertragsteuer", () => {
+    const { document } = october();
+    expect(rows(categorySpending(document, { period: "2026-10", kind: "income", parentId: null }))).toEqual([
+      "Einkommen: 2000",
+      "Kapitalerträge: 1024",
+    ]);
+    expect(rows(categorySpending(document, { period: "2026-10", kind: "income", parentId: "einkommen" }))).toEqual(["Prämien: 2000"]);
+    expect(rows(categorySpending(document, { period: "2026-10", kind: "expense", parentId: null }))).toEqual([
+      "Nicht kategorisiert: 1685",
+      "Steuern: 756",
+    ]);
+    expect(rows(categorySpending(document, { period: "2026-10", kind: "expense", parentId: "steuern" }))).toEqual([
+      "Kapitalertragsteuer: 756",
+    ]);
+    expect(categoryHistory(document, { categoryId: "steuern-kapitalertragsteuer", by: "month" })).toEqual([
+      { period: "2026-10", amount: 756 },
+    ]);
+  });
+
+  it("the Savings rate sees the net effect: income 30,24, expenses 16,85 plus 7,56 tax; the tax is not Uncategorized", () => {
+    const { document, account } = october();
+    const [month] = cashFlowMonths(flag(document, account));
+    expect(month).toMatchObject({ month: "2026-10", income: 3024, expenses: 2441, uncategorizedCount: 2 });
+    expect(month!.savingsRate).toBeCloseTo((3024 - 2441) / 3024, 10);
+  });
+
+  it("the tax follows its row: also counted when the owner re-categorizes it, gone when the import is undone, not doubled by a re-import", () => {
+    const { document, account, bytes, importId } = october();
+    const saveback = document.transactions.find((t) => t.origin.type === "BENEFITS_SAVEBACK")!;
+    const moved = must(setTransactionCategory(document, { transactionId: saveback.id, categoryId: "einkommen-sonstige" })).document;
+    expect(rows(categorySpending(moved, { period: "2026-10", kind: "expense", parentId: "steuern" }))).toEqual([
+      "Kapitalertragsteuer: 756",
+    ]);
+
+    const again = must(confirmImport(document, { importedAt: IMPORTED_AT, files: [{ name: "tr.csv", bytes, accountId: account }] }));
+    expect(again.files[0]).toMatchObject({ newCount: 0, duplicateCount: 4 });
+    expect(cashFlowMonths(again.document)[0]).toMatchObject({ income: 3024, expenses: 2441 });
+
+    expect(cashFlowMonths(must(undoImport(document, { importId })).document)).toEqual([]);
+  });
+
+  it("when Kapitalertragsteuer was deleted, the tax still counts, as Nicht kategorisiert", () => {
+    const { document } = october();
+    const without = must(deleteCategory(document, { id: "steuern-kapitalertragsteuer" })).document;
+    expect(rows(categorySpending(without, { period: "2026-10", kind: "expense", parentId: null }))).toEqual([
+      "Nicht kategorisiert: 2441",
     ]);
   });
 });

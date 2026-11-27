@@ -120,7 +120,9 @@ function bankClassification(transaction: Transaction, context: Context): Proposa
 /**
  * Trade Republic (spec "Trade Republic mapping"): category TRADING → Trade (Kauf when
  * cash goes out, Verkauf when it comes in); INTEREST_PAYMENT and DISTRIBUTION →
- * Kapitalerträge; any *TAX* type → Steuern. A *_CANCELLED row keeps its type's Category.
+ * Kapitalerträge; BENEFITS_SAVEBACK (the Saveback credit, paid out in fund shares) →
+ * Einkommen → Prämien, income rather than a Trade; any *TAX* type → Steuern.
+ * A *_CANCELLED row keeps its type's Category.
  * Transfer types, card payments and unknown types fall through (to rules, then the inbox).
  */
 function tradeRepublicClassifier(origin: TransactionOrigin, amountCents: number): Proposal | null {
@@ -129,6 +131,7 @@ function tradeRepublicClassifier(origin: TransactionOrigin, amountCents: number)
   const bank = (categoryId: string): Proposal => ({ kind: "category", categoryId, source: "bank" });
   if (type === "INTEREST_PAYMENT") return bank("kapitalertraege-zinsen");
   if (type === "DISTRIBUTION") return bank("kapitalertraege-ausschuettungen");
+  if (type === "BENEFITS_SAVEBACK") return bank("einkommen-praemien");
   if (/(^|_)TAX(_|$)/.test(type)) return bank("steuern-kapitalertragsteuer");
   return null;
 }

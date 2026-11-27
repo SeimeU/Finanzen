@@ -4,9 +4,9 @@ import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
 
 /**
  * Trade Republic's transaction export (available since about April 2026): comma-separated,
- * one header row, fields possibly quoted, ISO dates, decimal point, signed amounts.
- * The column list comes from open-source importers, not an official spec, so any change
- * to it fails the file loudly instead of being guessed at.
+ * one header row, every field quoted, ISO dates, decimal point, signed amounts with six decimals.
+ * `amount` is gross; `tax` is the tax withheld on it (ADR 0004). The column list is checked
+ * against a real export, and any change to it fails the file loudly instead of being guessed at.
  */
 const COLUMNS = [
   "datetime",
@@ -97,10 +97,13 @@ function parse(text: string): ParseResult {
       return failure("bad-row", `Zeile ${line}: Gebühr oder Steuer ist kein gültiger Betrag. Es wurde nichts importiert.`);
     }
     const iban = get("counterparty_iban").replace(/\s+/g, "").toUpperCase();
+    // A card payment leaves the counterparty columns empty and names the merchant in `name`,
+    // which on other rows is the security's name.
+    const isCard = get("type").replace(/_CANCELLED$/, "") === "CARD_TRANSACTION";
     transactions.push({
       date: date,
       amountCents,
-      counterpartyName: get("counterparty_name"),
+      counterpartyName: get("counterparty_name") || (isCard ? get("name") : ""),
       counterpartyIban: iban === "" ? null : iban,
       paymentReference: get("payment_reference"),
       purpose: get("description") || get("name"),
@@ -110,7 +113,7 @@ function parse(text: string): ParseResult {
         transactionId: get("transaction_id") || null,
         feeCents,
         taxCents,
-        securityName: get("name") || null,
+        securityName: (!isCard && get("name")) || null,
         isin: get("symbol") || null,
         rawText: null,
         valueDate: null,

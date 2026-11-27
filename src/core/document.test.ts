@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(16);
+    expect(CURRENT_SCHEMA_VERSION).toBe(17);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -104,6 +104,37 @@ describe("data document", () => {
     expect(result.ok && result.document.importProfiles).toEqual([
       { id: "ip1", columns: { date: 0, amount: 1, counterpartyName: 2, purpose: 3 } },
     ]);
+  });
+
+  it("a version 16 document gets the default Category Einkommen → Prämien, keeping the owner's own Categories", () => {
+    const own = { id: "c1", name: "Flohmarkt", parentId: "einkommen", kind: "income" };
+    const before = createEmptyDocument().categories.filter((c) => c.id !== "einkommen-praemien");
+    const v16 = { ...createEmptyDocument(), schemaVersion: 16, categories: [...before, own] };
+    const result = loadDocument(v16);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.categories).toEqual([
+      ...before,
+      own,
+      { id: "einkommen-praemien", name: "Prämien", parentId: "einkommen", kind: "income" },
+    ]);
+  });
+
+  it("a version 16 document whose owner deleted Einkommen gets Prämien as a top-level income Category", () => {
+    const before = createEmptyDocument().categories.filter((c) => c.id !== "einkommen" && c.parentId !== "einkommen");
+    const result = loadDocument({ ...createEmptyDocument(), schemaVersion: 16, categories: before });
+    expect(result.ok && result.document.categories.at(-1)).toEqual({
+      id: "einkommen-praemien",
+      name: "Prämien",
+      parentId: null,
+      kind: "income",
+    });
+  });
+
+  it("a version 16 document that already has its own Prämien under Einkommen gets no second one", () => {
+    const own = { id: "c1", name: "Prämien", parentId: "einkommen", kind: "income" };
+    const before = [...createEmptyDocument().categories.filter((c) => c.id !== "einkommen-praemien"), own];
+    const result = loadDocument({ ...createEmptyDocument(), schemaVersion: 16, categories: before });
+    expect(result.ok && result.document.categories).toEqual(before);
   });
 
   it("a version 14 document's Transactions belong to no Transfer pair", () => {

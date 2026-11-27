@@ -111,6 +111,22 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
       return { ...p, columns: { date: bookingDate, ...columns } };
     }),
   }),
+  // 16 → 17: the default Category Einkommen → Prämien (Trade Republic's Saveback), added after the
+  // owner's Categories; top-level when the owner deleted Einkommen. Not added when it is already
+  // there, or the owner made a "Prämien" of their own in that place (names are unique per parent).
+  16: (document) => {
+    const categories = document.categories as { id: string; name: string; parentId: string | null }[];
+    const parentId = categories.some((c) => c.id === "einkommen") ? "einkommen" : null;
+    const present = categories.some(
+      (c) => c.id === "einkommen-praemien" || (c.parentId === parentId && c.name.trim().toLowerCase() === "prämien"),
+    );
+    if (present) return { ...document, schemaVersion: 17 };
+    return {
+      ...document,
+      schemaVersion: 17,
+      categories: [...categories, { id: "einkommen-praemien", name: "Prämien", parentId, kind: "income" }],
+    };
+  },
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

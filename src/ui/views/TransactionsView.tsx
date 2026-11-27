@@ -116,7 +116,11 @@ export function TransactionsView() {
                   {t.purpose}
                   {t.paymentReference && <div className="meta">{t.paymentReference}</div>}
                 </td>
-                <td className="amount">{formatEur(t.amountCents)}</td>
+                <td className="amount">
+                  {formatEur(t.amountCents)}
+                  {/* The amount is gross; the tax withheld on it counts as Kapitalertragsteuer. */}
+                  {t.origin.taxCents ? <div className="meta">Steuer {formatEur(t.origin.taxCents)}</div> : null}
+                </td>
                 <td>
                   <TransactionCategorySelect transaction={t} options={categories} onChange={(c) => categorize(t.id, c)} />
                 </td>

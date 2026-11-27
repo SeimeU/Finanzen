@@ -138,3 +138,24 @@ test("an unreadable file is rejected with a German message and nothing is import
   );
   await expect(page.getByRole("button", { name: "Importieren" })).toBeDisabled();
 });
+
+test("Umsätze show the tax Trade Republic withheld next to the gross amount, and a card payment's merchant", async ({ page, app }) => {
+  await withTradeRepublicAccount(app.dataFile);
+  const csv = await readFile(join(import.meta.dirname, "..", "src", "core", "import", "fixtures", "trade-republic-cash.csv"), "utf8");
+  await unlock(page, app.url);
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await dropFile(page, "trade-republic.csv", csv);
+  await page.getByRole("button", { name: "Importieren" }).click();
+  await expect(page.getByRole("status")).toContainText("4 Umsätze importiert.");
+
+  await page.getByRole("button", { name: "Umsätze", exact: true }).click();
+  const rows = page.getByRole("table", { name: "Umsätze" }).getByRole("row");
+  await expect(rows).toHaveCount(5);
+  const amount = (row: number) => rows.nth(row).getByRole("cell").nth(4);
+  await expect(amount(1)).toHaveText("10,24 €Steuer -2,56 €");
+  await expect(amount(4)).toHaveText("20,00 €Steuer -5,00 €");
+  await expect(amount(2)).toHaveText("-4,50 €");
+  await page.getByLabel("Suche").fill("mustermarkt");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(1).getByRole("cell").nth(2)).toHaveText("MUSTERMARKT FILIALE 12");
+});

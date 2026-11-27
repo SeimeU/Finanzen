@@ -13,7 +13,15 @@ import { nextMonth } from "./snapshots";
  * - "unknown" (Uncategorized): never dropped. It counts by sign, outflows as expenses and
  *   inflows as income, in its own bucket "Nicht kategorisiert" (categoryId null).
  * All amounts are positive cents in the row's kind (spent for expenses, received for income).
+ *
+ * Tax withheld (`origin.taxCents`, Trade Republic's tax column) is a second, derived line of the
+ * same Transaction: the Transaction's amount is gross and counts as above, and the tax counts as
+ * an expense under Steuern → Kapitalertragsteuer (Nicht kategorisiert if that Category was
+ * deleted), so the net effect is amount + tax. It counts for Trades too, never for Transfers,
+ * whatever Category the owner gives the row, and is not an Uncategorized Transaction.
  */
+
+export const WITHHELD_TAX_CATEGORY_ID = "steuern-kapitalertragsteuer";
 
 export const UNCATEGORIZED_LABEL = "Nicht kategorisiert";
 
@@ -30,18 +38,23 @@ export type CategorySpendingRow = {
 };
 
 /** One counted Transaction: in which kind, under which Category (null: Uncategorized), how much (positive = in the kind's direction). */
-type Counted = { date: string; kind: CategoryKind; categoryId: string | null; amount: number };
+type Counted = { date: string; kind: CategoryKind; categoryId: string | null; amount: number; withheldTax?: true };
 
 function counted(document: WealthDocument): Counted[] {
+  const taxCategory = document.categories.some((c) => c.id === WITHHELD_TAX_CATEGORY_ID) ? WITHHELD_TAX_CATEGORY_ID : null;
   return classifyTransactions(document, document.transactions).flatMap((t: ClassifiedTransaction): Counted[] => {
     const c = t.classification;
-    if (c.cashFlow === "excluded") return [];
+    const tax: Counted[] =
+      c.kind !== "transfer" && t.origin.taxCents
+        ? [{ date: t.date, kind: "expense", categoryId: taxCategory, amount: -t.origin.taxCents, withheldTax: true }]
+        : [];
+    if (c.cashFlow === "excluded") return tax;
     if (c.kind === "category") {
       const amount = c.cashFlow === "expense" ? -t.amountCents : t.amountCents;
-      return [{ date: t.date, kind: c.cashFlow, categoryId: c.categoryId, amount }];
+      return [{ date: t.date, kind: c.cashFlow, categoryId: c.categoryId, amount }, ...tax];
     }
     const kind: CategoryKind = t.amountCents < 0 ? "expense" : "income";
-    return [{ date: t.date, kind, categoryId: null, amount: Math.abs(t.amountCents) }];
+    return [{ date: t.date, kind, categoryId: null, amount: Math.abs(t.amountCents) }, ...tax];
   });
 }
 
@@ -150,7 +163,7 @@ export function cashFlowMonths(document: WealthDocument): CashFlowMonth[] {
       if (!inPeriod(t.date, month)) continue;
       if (t.kind === "income") income += t.amount;
       else expenses += t.amount;
-      if (t.categoryId === null) uncategorizedCount++;
+      if (t.categoryId === null && !t.withheldTax) uncategorizedCount++;
     }
     const required = flagged.filter((a) => accountIsOpen(a, month));
     const missingAccounts = required

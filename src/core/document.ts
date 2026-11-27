@@ -279,7 +279,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 16;
+export const CURRENT_SCHEMA_VERSION = 17;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -302,7 +302,7 @@ export function createEmptyDocument(): WealthDocument {
 /** The Category list a new document starts with (also added by the 6 → 7 migration). */
 export function defaultCategories(): Category[] {
   const list: [string, string, CategoryKind, [string, string][]][] = [
-    ["einkommen", "Einkommen", "income", [["gehalt", "Gehalt"], ["sonstige", "Sonstige Einnahmen"]]],
+    ["einkommen", "Einkommen", "income", [["gehalt", "Gehalt"], ["praemien", "Prämien"], ["sonstige", "Sonstige Einnahmen"]]],
     ["kapitalertraege", "Kapitalerträge", "income", [["zinsen", "Zinsen"], ["ausschuettungen", "Ausschüttungen"]]],
     ["wohnen", "Wohnen", "expense", [["miete", "Miete"], ["betriebskosten", "Betriebskosten"], ["energie", "Strom & Gas"], ["internet", "Internet & Telefon"]]],
     ["lebensmittel", "Lebensmittel", "expense", [["supermarkt", "Supermarkt"], ["baeckerei", "Bäckerei & Markt"]]],

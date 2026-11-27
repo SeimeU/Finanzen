@@ -5,9 +5,9 @@ import type { ImportProfile, ParsedTransaction, ParseResult } from "./profile";
 /**
  * Raiffeisen Austria "Mein ELBA" transaction export: no header row, semicolon-separated,
  * UTF-8 with BOM. Columns: Buchungsdatum; Buchungstext; Valutadatum; Betrag; Währung; Zeitstempel.
- * The layout comes from open-source importers, not from Raiffeisen, and has not been checked
- * against a real export yet (decimal format, sign convention, date format), so every field is
- * validated and anything unexpected fails the whole file.
+ * Checked against a real Girokonto export: DD.MM.YYYY dates, decimal comma, outflows with "-" and
+ * inflows unsigned, the Buchungstext quoted, Zeitstempel "03.11.2025 02:21:31:443". Every field
+ * is still validated and anything unexpected fails the whole file.
  */
 const COLUMN_COUNT = 6;
 
@@ -64,10 +64,12 @@ function parse(text: string): ParseResult {
     // only names the other side, that one is used.
     const [preferred, other] = amountCents < 0 ? [fields.payee, fields.payer] : [fields.payer, fields.payee];
     const counterparty = preferred.name || preferred.iban ? preferred : other;
+    // A card payment names no payee; its merchant is in the Verwendungszweck.
+    const merchant = !counterparty.name && /Kartenzahlung/.test(rawText) ? fields.statedPurpose : "";
     transactions.push({
       date,
       amountCents,
-      counterpartyName: counterparty.name,
+      counterpartyName: counterparty.name || merchant,
       counterpartyIban: counterparty.iban === "" ? null : counterparty.iban.replace(/\s+/g, "").toUpperCase(),
       paymentReference: fields.paymentReference,
       purpose: fields.purpose,
@@ -108,6 +110,7 @@ const BOOKING_TEXT_KEYS = [
   "BIC Empfänger",
   "Empfänger",
   "Empfänger-Kennung",
+  "Urspr. Empfänger",
   "Zahlungsempfänger",
   "IBAN Zahlungsempfänger",
   "BIC Zahlungsempfänger",
@@ -136,6 +139,8 @@ type Party = { name: string; iban: string };
 /** The fields a Transaction needs, read from the packed Buchungstext. Missing keys give "". */
 function splitRawText(text: string): {
   purpose: string;
+  /** The Verwendungszweck alone ("" without one). */
+  statedPurpose: string;
   paymentReference: string;
   payer: Party;
   payee: Party;
@@ -151,11 +156,14 @@ function splitRawText(text: string): {
   const get = (...keys: string[]) => keys.map((k) => values.get(k) ?? "").find((v) => v !== "") ?? "";
   return {
     purpose: get("Verwendungszweck") || leading,
+    statedPurpose: get("Verwendungszweck"),
     paymentReference: get("Zahlungsreferenz"),
     payer: {
       name: get("Auftraggeber", "Zahlungspflichtiger"),
       iban: get("IBAN Auftraggeber", "IBAN Zahlungspflichtiger"),
     },
+    // "Urspr. Empfänger" (the original payee behind a payment service) is its own key, so
+    // it is never read as the payee.
     payee: {
       name: get("Empfänger", "Zahlungsempfänger"),
       iban: get("IBAN Empfänger", "IBAN Zahlungsempfänger"),

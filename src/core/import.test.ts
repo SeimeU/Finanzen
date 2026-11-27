@@ -122,6 +122,28 @@ describe("confirming an import", () => {
     });
   });
 
+  it("reads the real export's shape: every field quoted, six-decimal amounts, the tax withheld kept apart", () => {
+    const { document, accountId } = withTradeRepublicAccount();
+    const { document: next } = importFile(document, "tr.csv", fixture("trade-republic-cash.csv"), accountId);
+    expect(searchTransactions(next).map((t) => [t.date, t.origin.type, t.amountCents, t.origin.taxCents])).toEqual([
+      ["2026-10-31", "INTEREST_PAYMENT", 1024, -256],
+      ["2026-10-20", "CARD_TRANSACTION", -450, null],
+      ["2026-10-14", "CARD_TRANSACTION", -1235, null],
+      ["2026-10-02", "BENEFITS_SAVEBACK", 2000, -500],
+    ]);
+  });
+
+  it("a card payment's counterparty is the merchant, which Trade Republic gives as the row's name", () => {
+    const { document, accountId } = withTradeRepublicAccount();
+    const { document: next } = importFile(document, "tr.csv", fixture("trade-republic-cash.csv"), accountId);
+    const cards = searchTransactions(next).filter((t) => t.origin.type === "CARD_TRANSACTION");
+    expect(cards.map((t) => [t.counterpartyName, t.origin.securityName])).toEqual([
+      ["BEISPIEL CAFE 4711", null],
+      ["MUSTERMARKT FILIALE 12", null],
+    ]);
+    expect(searchTransactions(next, { text: "mustermarkt" })).toHaveLength(1);
+  });
+
   it("lists the import with its file, Account and counts", () => {
     const { document, accountId } = withTradeRepublicAccount();
     const { document: next } = importFile(document, "tr.csv", fixture("trade-republic-basic.csv"), accountId);

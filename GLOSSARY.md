@@ -97,6 +97,11 @@ A label saying what a **Transaction** was for, such as Rent or Groceries. A Tran
 _Avoid_: Tag, type
 _UI_: Kategorie
 
+**Withheld tax**:
+Tax the bank kept back from a **Transaction**, such as capital gains tax on interest, given beside its gross amount (Trade Republic's tax column). The gross amount counts under the Transaction's **Category** and the withheld tax as an expense under Steuern → Kapitalertragsteuer, so the net effect is amount + tax. See ADR 0004.
+_Avoid_: Net amount, tax row
+_UI_: Steuer
+
 **Categorization rule**:
 A condition on a **Transaction**'s fields, such as "counterparty contains REWE", that assigns a **Category** on import. A manually assigned Category always wins over a rule.
 _Avoid_: Filter, auto-tag

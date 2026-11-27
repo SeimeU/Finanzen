@@ -183,9 +183,11 @@ Separately, I can drop CSV exports from several banks at once. The app recognize
 - **Trade Republic mapping:**
   - rows in category TRADING → Trade
   - INTEREST_PAYMENT and DISTRIBUTION → income under "Kapitalerträge"
+  - BENEFITS_SAVEBACK → income under "Einkommen → Prämien" (not a Trade, not a Transfer)
   - tax rows → expense under "Steuern"
+  - the tax column (Withheld tax) on any row → expense under "Steuern → Kapitalertragsteuer"; the amount column is gross (ADR 0004)
   - incoming and outgoing transfer types → Transfer candidates
-  - card and other payments → ordinary Transactions for the rules
+  - card and other payments → ordinary Transactions for the rules; a card payment's counterparty is the merchant (`name` column; for ELBA, the Verwendungszweck)
   - any unknown type → Uncategorized
 - **Transfer detection:** primary when the counterparty IBAN matches an own Account's IBAN; fallback when equal and opposite amounts on two own Accounts fall within 3 days, offered as a suggestion. Manual marking overrides both.
 - **Categorization precedence:** manual Category, then Trade/Transfer classification, then the first matching Categorization rule in user-defined order, then Uncategorized.

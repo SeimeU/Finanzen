@@ -91,6 +91,28 @@ describe("ELBA Transactions", () => {
     ]);
   });
 
+  it("reads the real Girokonto export's shape: quoted Buchungstext, unsigned inflows, Zahlungsempfänger, standing orders, card payments", () => {
+    const { document, elbaAccountId } = withBothBanks();
+    const { document: next } = importElba(document, fixture("elba-girokonto.csv"), elbaAccountId);
+    expect(
+      searchTransactions(next).map((t) => [t.date, t.amountCents, t.counterpartyName, t.counterpartyIban, t.paymentReference, t.purpose]),
+    ).toEqual([
+      [
+        "2026-11-08",
+        -299,
+        "BEISPIELSHOP.COM/BILL DUBLIN UNKNOWN",
+        null,
+        "ePAYMENT      2,99 IE  D1   07.11. 21:04",
+        "BEISPIELSHOP.COM/BILL DUBLIN UNKNOWN",
+      ],
+      ["2026-11-07", 850, "", null, "Rückerstattung 4711", ""],
+      ["2026-11-06", -10000, "", null, "SB-BEHEBUNG 00012345 K1   06.11. 10:15", ""],
+      ["2026-11-05", -5000, "Erika Musterfrau", "AT483200000012345864", "Taschengeld", "Dauerauftrag vom 05.11"],
+      ["2026-11-04", -2999, "Zahldienst Europe GmbH", "DE89370400440532013000", "", "1000012345678 Beispielshop"],
+      ["2026-11-03", -4567, "Muster Versicherung Aktiengesellschaft", "AT611904300234573201", "", "Polizze 12345 November"],
+    ]);
+  });
+
   it("keeps the raw Buchungstext and the Valutadatum", () => {
     const { document, elbaAccountId } = withBothBanks();
     const { document: next } = importElba(document, fixture("elba-basic.csv"), elbaAccountId);
