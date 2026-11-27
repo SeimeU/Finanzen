@@ -19,6 +19,7 @@ import type {
   SnapshotForm,
   SnapshotInput,
   TransactionFilter,
+  TransferSuggestion,
 } from "../core";
 
 export type AppState = "new" | "locked" | "unlocked";
@@ -128,6 +129,19 @@ export const categoriesApi = {
   remove: (id: string) => call<Categories>("POST", "/api/categories/delete", { id }),
   setTransactionCategory: (transactionId: string, categoryId: string | null) =>
     call<object>("POST", "/api/transactions/category", { transactionId, categoryId }),
+};
+
+/** Transfers (Umbuchungen): marks by hand and the amount-matching suggestions. */
+type Suggestions = { suggestions: TransferSuggestion[] };
+export const transfersApi = {
+  /** true marks, false unmarks against detection, null returns to detection. */
+  setTransfer: (transactionId: string, transfer: boolean | null) =>
+    call<object>("POST", "/api/transactions/transfer", { transactionId, transfer }),
+  suggestions: () => call<Suggestions>("GET", "/api/transfer-suggestions"),
+  accept: (outgoingId: string, incomingId: string) =>
+    call<Suggestions>("POST", "/api/transfer-suggestions/accept", { outgoingId, incomingId }),
+  reject: (outgoingId: string, incomingId: string) =>
+    call<Suggestions>("POST", "/api/transfer-suggestions/reject", { outgoingId, incomingId }),
 };
 
 export const importProfilesApi = {

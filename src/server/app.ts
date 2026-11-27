@@ -10,6 +10,10 @@ import {
   deleteCategory,
   listCategories,
   setTransactionCategory,
+  setTransfer,
+  acceptTransferSuggestion,
+  rejectTransferSuggestion,
+  transferSuggestions,
   updateCategory,
   listImports,
   previewImport,
@@ -59,6 +63,7 @@ type Reply = { status: number; body: unknown };
 type Handler = (body: Record<string, unknown>) => Promise<Reply>;
 
 const categoriesView = (document: WealthDocument) => ({ categories: listCategories(document) });
+const suggestionsView = (document: WealthDocument) => ({ suggestions: transferSuggestions(document) });
 
 export function createApp(initialConfig: AppConfig): Server {
   // The data file location can change at runtime (settings), so keep a mutable copy.
@@ -332,6 +337,13 @@ export function createApp(initialConfig: AppConfig): Server {
     "POST /api/transactions/search": async (filter) =>
       session ? ok({ transactions: searchTransactions(session.document, filter) }) : locked(),
     "POST /api/transactions/category": command(setTransactionCategory, () => ({})),
+
+    // Transfers (Umbuchungen): { transactionId, transfer: true | false | null }; suggestions reply with the updated list.
+    "POST /api/transactions/transfer": command(setTransfer, () => ({})),
+    "GET /api/transfer-suggestions": async () =>
+      session ? ok({ suggestions: transferSuggestions(session.document) }) : locked(),
+    "POST /api/transfer-suggestions/accept": command(acceptTransferSuggestion, suggestionsView),
+    "POST /api/transfer-suggestions/reject": command(rejectTransferSuggestion, suggestionsView),
 
     // Categories (Kategorien). Every command replies with the whole updated tree.
     "GET /api/categories": async () => (session ? ok({ categories: listCategories(session.document) }) : locked()),
