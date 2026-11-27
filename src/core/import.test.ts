@@ -108,6 +108,8 @@ describe("confirming an import", () => {
         bookingText: null,
         valueDate: null,
       },
+      manualCategoryId: null,
+      classification: { kind: "uncategorized", cashFlow: "unknown" },
     });
     expect(found.find((t) => t.origin.type === "BUY")!.origin).toMatchObject({
       category: "TRADING",

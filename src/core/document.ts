@@ -17,6 +17,8 @@ export type WealthDocument = {
   importProfiles: GenericImportProfile[];
   /** The Account last confirmed for each import file name; suggested when that name is dropped again. */
   importAccountChoices: ImportAccountChoice[];
+  /** Two levels: top-level Categories (parentId null) and their children. See ./categories.ts. */
+  categories: Category[];
 };
 
 export type ImportAccountChoice = { fileName: string; accountId: string };
@@ -102,6 +104,8 @@ export type Transaction = {
   paymentReference: string;
   purpose: string;
   origin: TransactionOrigin;
+  /** The Category the owner set by hand; it wins over every automatic classification. */
+  manualCategoryId: string | null;
 };
 
 /**
@@ -122,6 +126,20 @@ export type TransactionOrigin = {
   bookingText: string | null;
   /** ELBA: the Valutadatum, "YYYY-MM-DD". */
   valueDate: string | null;
+};
+
+export const CATEGORY_KINDS = ["income", "expense"] as const;
+export type CategoryKind = (typeof CATEGORY_KINDS)[number];
+
+/**
+ * What a Transaction was for. A child (parentId set) always has its parent's kind.
+ * Default Categories have readable ids (e.g. "kapitalertraege-zinsen"); new ones get c1, c2, ….
+ */
+export type Category = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  kind: CategoryKind;
 };
 
 export type ImportRecord = {
@@ -172,7 +190,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -185,5 +203,27 @@ export function createEmptyDocument(): WealthDocument {
     imports: [],
     importProfiles: [],
     importAccountChoices: [],
+    categories: defaultCategories(),
   };
+}
+
+/** The Category list a new document starts with (also added by the 6 → 7 migration). */
+export function defaultCategories(): Category[] {
+  const list: [string, string, CategoryKind, [string, string][]][] = [
+    ["einkommen", "Einkommen", "income", [["gehalt", "Gehalt"], ["sonstige", "Sonstige Einnahmen"]]],
+    ["kapitalertraege", "Kapitalerträge", "income", [["zinsen", "Zinsen"], ["ausschuettungen", "Ausschüttungen"]]],
+    ["wohnen", "Wohnen", "expense", [["miete", "Miete"], ["betriebskosten", "Betriebskosten"], ["energie", "Strom & Gas"], ["internet", "Internet & Telefon"]]],
+    ["lebensmittel", "Lebensmittel", "expense", [["supermarkt", "Supermarkt"], ["baeckerei", "Bäckerei & Markt"]]],
+    ["mobilitaet", "Mobilität", "expense", [["oeffis", "Öffis"], ["auto", "Auto"], ["treibstoff", "Treibstoff"]]],
+    ["gesundheit", "Gesundheit", "expense", [["arzt", "Arzt & Apotheke"], ["sport", "Sport"]]],
+    ["freizeit", "Freizeit", "expense", [["restaurant", "Restaurant & Café"], ["urlaub", "Urlaub"], ["hobbys", "Hobbys"]]],
+    ["einkaeufe", "Einkäufe", "expense", [["kleidung", "Kleidung"], ["haushalt", "Haushalt & Elektronik"]]],
+    ["versicherungen", "Versicherungen", "expense", []],
+    ["steuern", "Steuern", "expense", [["kapitalertragsteuer", "Kapitalertragsteuer"], ["sonstige", "Sonstige Steuern"]]],
+    ["sonstiges", "Sonstiges", "expense", [["gebuehren", "Gebühren"], ["geschenke", "Geschenke & Spenden"]]],
+  ];
+  return list.flatMap(([id, name, kind, children]) => [
+    { id, name, parentId: null, kind },
+    ...children.map(([childId, childName]) => ({ id: `${id}-${childId}`, name: childName, parentId: id, kind })),
+  ]);
 }

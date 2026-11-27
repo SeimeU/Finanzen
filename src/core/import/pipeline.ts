@@ -97,6 +97,7 @@ export function confirmImport(
       accountId: file.accountId,
       importId,
       ...t,
+      manualCategoryId: null,
     }));
     const record: ImportRecord = {
       id: importId,

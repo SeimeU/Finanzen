@@ -33,11 +33,21 @@ export {
 export type { ImportProfile, ParsedTransaction } from "./import/profile";
 export { previewImportProfile, saveImportProfile, type ImportProfilePreview } from "./import/generic";
 export {
+  CATEGORY_KINDS,
   GENERIC_DATE_FORMATS,
   GENERIC_DECIMAL_SEPARATORS,
   GENERIC_SEPARATORS,
+  type Category,
+  type CategoryKind,
   type GenericColumnMapping,
   type GenericImportProfile,
   type GenericProfileSettings,
 } from "./document";
-export { searchTransactions, type TransactionFilter } from "./transactions";
+export { searchTransactions, uncategorizedTransactions, type TransactionFilter } from "./transactions";
+export {
+  setTransactionCategory,
+  type CategorySource,
+  type ClassifiedTransaction,
+  type TransactionClassification,
+} from "./classification";
+export * from "./categories";

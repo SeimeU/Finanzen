@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(6);
+    expect(CURRENT_SCHEMA_VERSION).toBe(7);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -30,17 +30,28 @@ describe("data document", () => {
     expect(result.document.importAccountChoices).toEqual([]);
   });
 
-  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts", () => {
+  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories", () => {
     const origin = { category: "CASH", type: "BUY", transactionId: "x", feeCents: null, taxCents: null, securityName: null, isin: null };
     const v4 = { ...createEmptyDocument(), schemaVersion: 4, transactions: [{ id: "t1", origin }] } as Record<string, unknown>;
     delete v4.importProfiles;
     delete v4.importAccountChoices;
+    delete v4.categories;
     const result = loadDocument(v4);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(result.document.importProfiles).toEqual([]);
     expect(result.document.transactions[0]!.origin).toEqual({ ...origin, bookingText: null, valueDate: null });
+    expect(result.document.transactions[0]!.manualCategoryId).toBeNull();
     expect(result.document.importAccountChoices).toEqual([]);
+    expect(result.document.categories).toEqual(createEmptyDocument().categories);
+  });
+
+  it("a version 6 document gets the default Categories and its Transactions no manual Category", () => {
+    const v6 = { ...createEmptyDocument(), schemaVersion: 6, categories: undefined, transactions: [{ id: "t1", purpose: "Billa" }] };
+    const result = loadDocument(v6);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.document.categories).toEqual(createEmptyDocument().categories);
+    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null }]);
   });
 
   it("rejects a document from a newer app version", () => {

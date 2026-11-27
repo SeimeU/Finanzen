@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
-import type { Transaction } from "../../core";
-import { api, importApi } from "../api";
+import type { ClassifiedTransaction } from "../../core";
+import { api, ApiError, categoriesApi, importApi } from "../api";
 import { formatDate, formatEur } from "../format";
-import { accountOptions } from "../labels";
+import { accountOptions, categoryOptions } from "../labels";
+import { TransactionCategorySelect } from "./TransactionCategorySelect";
 
-/** The Transaction list (Umsätze), filtered by Konto, date range and text. */
+/** The Transaction list (Umsätze), filtered by Konto, date range and text; each row's Kategorie can be set by hand. */
 export function TransactionsView() {
   const [accounts, setAccounts] = useState<{ id: string; label: string }[]>([]);
   const [accountId, setAccountId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [text, setText] = useState("");
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
+  const [transactions, setTransactions] = useState<ClassifiedTransaction[] | null>(null);
+  const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
+  const [error, setError] = useState("");
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     api.structure().then((r) => setAccounts(accountOptions(r.structure)));
+    categoriesApi.list().then((r) => setCategories(categoryOptions(r.categories)));
   }, []);
 
   useEffect(() => {
@@ -25,7 +30,18 @@ export function TransactionsView() {
     return () => {
       current = false;
     };
-  }, [accountId, from, to, text]);
+  }, [accountId, from, to, text, version]);
+
+  async function categorize(transactionId: string, categoryId: string | null) {
+    setError("");
+    try {
+      await categoriesApi.setTransactionCategory(transactionId, categoryId);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      setError(e.message);
+    }
+  }
 
   const accountLabel = (id: string) => accounts.find((a) => a.id === id)?.label ?? id;
 
@@ -57,6 +73,7 @@ export function TransactionsView() {
           <input type="search" value={text} onChange={(e) => setText(e.target.value)} />
         </label>
       </div>
+      {error && <p role="alert">{error}</p>}
       {transactions !== null && transactions.length === 0 && <p className="empty">Keine Umsätze gefunden.</p>}
       {transactions !== null && transactions.length > 0 && (
         <table aria-label="Umsätze" className="transactions">
@@ -67,6 +84,7 @@ export function TransactionsView() {
               <th>Gegenüber</th>
               <th>Verwendungszweck</th>
               <th className="amount">Betrag</th>
+              <th>Kategorie</th>
             </tr>
           </thead>
           <tbody>
@@ -83,6 +101,9 @@ export function TransactionsView() {
                   {t.paymentReference && <div className="meta">{t.paymentReference}</div>}
                 </td>
                 <td className="amount">{formatEur(t.amountCents)}</td>
+                <td>
+                  <TransactionCategorySelect transaction={t} options={categories} onChange={(c) => categorize(t.id, c)} />
+                </td>
               </tr>
             ))}
           </tbody>

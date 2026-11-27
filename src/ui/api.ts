@@ -2,8 +2,11 @@
 import type {
   AccountDetail,
   AccountInput,
+  CategoryKind,
+  CategoryNode,
   ContributionMonth,
   Classification,
+  ClassifiedTransaction,
   FilePreview,
   GenericProfileSettings,
   ImportProfilePreview,
@@ -15,7 +18,6 @@ import type {
   NetWorthMonth,
   SnapshotForm,
   SnapshotInput,
-  Transaction,
   TransactionFilter,
 } from "../core";
 
@@ -112,7 +114,20 @@ export const importApi = {
   undo: (importId: string) => call<{ imports: ImportRecord[] }>("POST", "/api/import/undo", { importId }),
   imports: () => call<{ imports: ImportRecord[] }>("GET", "/api/imports"),
   searchTransactions: (filter: TransactionFilter) =>
-    call<{ transactions: Transaction[] }>("POST", "/api/transactions/search", filter),
+    call<{ transactions: ClassifiedTransaction[] }>("POST", "/api/transactions/search", filter),
+};
+
+/** Categories and the Category of a Transaction. Category commands reply with the whole tree. */
+type Categories = { categories: CategoryNode[] };
+export const categoriesApi = {
+  list: () => call<Categories>("GET", "/api/categories"),
+  create: (input: { name: string; parentId: string | null; kind: CategoryKind }) =>
+    call<Categories & { id: string }>("POST", "/api/categories/create", input),
+  update: (input: { id: string; name: string; kind?: CategoryKind }) =>
+    call<Categories>("POST", "/api/categories/update", input),
+  remove: (id: string) => call<Categories>("POST", "/api/categories/delete", { id }),
+  setTransactionCategory: (transactionId: string, categoryId: string | null) =>
+    call<object>("POST", "/api/transactions/category", { transactionId, categoryId }),
 };
 
 export const importProfilesApi = {

@@ -6,6 +6,11 @@ import {
   accountDetail,
   contributionSplit,
   confirmImport,
+  createCategory,
+  deleteCategory,
+  listCategories,
+  setTransactionCategory,
+  updateCategory,
   listImports,
   previewImport,
   previewImportProfile,
@@ -53,6 +58,8 @@ type Session = { password: string; document: WealthDocument };
 type Reply = { status: number; body: unknown };
 type Handler = (body: Record<string, unknown>) => Promise<Reply>;
 
+const categoriesView = (document: WealthDocument) => ({ categories: listCategories(document) });
+
 export function createApp(initialConfig: AppConfig): Server {
   // The data file location can change at runtime (settings), so keep a mutable copy.
   const config = { ...initialConfig };
@@ -71,9 +78,13 @@ export function createApp(initialConfig: AppConfig): Server {
 
   /**
    * Runs a core command on the unlocked document, saves the result, then replies
-   * with the command's extra fields (e.g. a new id) plus the updated `structure`.
+   * with the command's extra fields (e.g. a new id) plus the updated `structure`
+   * (or whatever `view` returns for the updated document).
    */
-  function command<I>(cmd: (document: WealthDocument, input: I) => Result<{ document: WealthDocument }>): Handler {
+  function command<I>(
+    cmd: (document: WealthDocument, input: I) => Result<{ document: WealthDocument }>,
+    view: (document: WealthDocument) => object = (document) => ({ structure: listStructure(document) }),
+  ): Handler {
     return async (body) => {
       if (!session) return error(423, "locked", "Die App ist gesperrt.");
       const result = cmd(session.document, body as I);
@@ -81,7 +92,7 @@ export function createApp(initialConfig: AppConfig): Server {
       const { ok: _, document, ...rest } = result;
       await store.save(config.dataFile, session.password, document);
       session.document = document;
-      return ok({ ...rest, structure: listStructure(document) });
+      return ok({ ...rest, ...view(document) });
     };
   }
 
@@ -320,6 +331,13 @@ export function createApp(initialConfig: AppConfig): Server {
     "GET /api/imports": async () => (session ? ok({ imports: listImports(session.document) }) : locked()),
     "POST /api/transactions/search": async (filter) =>
       session ? ok({ transactions: searchTransactions(session.document, filter) }) : locked(),
+    "POST /api/transactions/category": command(setTransactionCategory, () => ({})),
+
+    // Categories (Kategorien). Every command replies with the whole updated tree.
+    "GET /api/categories": async () => (session ? ok({ categories: listCategories(session.document) }) : locked()),
+    "POST /api/categories/create": command(createCategory, categoriesView),
+    "POST /api/categories/update": command(updateCategory, categoriesView),
+    "POST /api/categories/delete": command(deleteCategory, categoriesView),
   };
 
   return createServer(async (request, response) => {

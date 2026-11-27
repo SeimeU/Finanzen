@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, type WealthDocument } from "./document";
+import { CURRENT_SCHEMA_VERSION, defaultCategories, type WealthDocument } from "./document";
 import { fail, type Result } from "./result";
 
 type RawDocument = { schemaVersion: number } & Record<string, unknown>;
@@ -28,6 +28,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
       origin: { ...t.origin, bookingText: null, valueDate: null },
     })),
     importAccountChoices: [],
+  }),
+  // 6 → 7: Categories (default list) and the manual Category on each Transaction.
+  6: (document) => ({
+    ...document,
+    schemaVersion: 7,
+    categories: defaultCategories(),
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, manualCategoryId: null })),
   }),
 };
 
