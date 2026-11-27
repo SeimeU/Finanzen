@@ -36,7 +36,7 @@ export function createAccount(document: WealthDocument, input: AccountInput): Cr
   return {
     ok: true,
     id,
-    document: { ...document, accounts: [...document.accounts, { ...account.value, id }] },
+    document: { ...document, accounts: [...document.accounts, { ...account.value, id, perHoldingFrom: null }] },
   };
 }
 
@@ -79,7 +79,10 @@ export function updateAccount(
   if (!account.ok) return account;
   return {
     ok: true,
-    document: { ...document, accounts: document.accounts.map((a) => (a.id === input.id ? account.value : a)) },
+    document: {
+      ...document,
+      accounts: document.accounts.map((a) => (a.id === input.id ? { ...account.value, perHoldingFrom: a.perHoldingFrom } : a)),
+    },
   };
 }
 
@@ -119,7 +122,8 @@ export function valuationOfAccount(document: WealthDocument, accountId: string):
 }
 
 export type HoldingView = Omit<Holding, "accountId">;
-export type AccountView = Omit<Account, "institutionId"> & { holdings: HoldingView[] };
+/** perHoldingFrom is left out: the Monatsstand form (snapshotForm) shows and changes it. */
+export type AccountView = Omit<Account, "institutionId" | "perHoldingFrom"> & { holdings: HoldingView[] };
 export type InstitutionView = Institution & { accounts: AccountView[] };
 
 /** Institutions → Accounts → Holdings, in creation order. */
@@ -128,7 +132,7 @@ export function listStructure(document: WealthDocument): InstitutionView[] {
     ...institution,
     accounts: document.accounts
       .filter((a) => a.institutionId === institution.id)
-      .map(({ institutionId: _, ...account }) => ({
+      .map(({ institutionId: _, perHoldingFrom: __, ...account }) => ({
         ...account,
         holdings: document.holdings
           .filter((h) => h.accountId === account.id)
@@ -147,7 +151,11 @@ function validName(raw: unknown): Valid<string> {
   return { ok: true, value: name };
 }
 
-function validAccount(document: WealthDocument, id: string, input: AccountInput): Valid<Account> {
+function validAccount(
+  document: WealthDocument,
+  id: string,
+  input: AccountInput,
+): Valid<Omit<Account, "perHoldingFrom">> {
   if (!document.institutions.some((i) => i.id === input.institutionId)) {
     return fail("institution-not-found", "Das Institut gibt es nicht.");
   }

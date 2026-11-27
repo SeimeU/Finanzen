@@ -6,6 +6,7 @@ export {
   ASSET_CLASSES,
   LIQUIDITIES,
   type Account,
+  type AccountValue,
   type AssetClass,
   type Classification,
   type Holding,
@@ -20,6 +21,7 @@ export * from "./structure";
 export * from "./snapshots";
 export * from "./notes";
 export * from "./accountDetail";
+export * from "./overview";
 export { type ImportAccountChoice, type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
 export {
   confirmImport,

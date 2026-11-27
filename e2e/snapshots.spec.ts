@@ -46,7 +46,7 @@ test("enter two Monatsstände, the second pre-filled from the first, and see Ver
   await msci.getByLabel("Wert").fill("10.000");
   await msci.getByLabel("Einzahlung").fill("500");
   await expect(form.getByLabel("Vermögen", { exact: true })).toHaveText("11.500,00 €");
-  await form.getByRole("button", { name: "Speichern" }).click();
+  await form.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(form.getByRole("status")).toHaveText("Monatsstand für Jänner 2026 gespeichert.");
 
   await form.getByLabel("Monat", { exact: true }).fill("2026-02");
@@ -60,13 +60,13 @@ test("enter two Monatsstände, the second pre-filled from the first, and see Ver
   await expect(form.getByLabel("Veränderung zum Vormonat")).toHaveText("250,00 €");
   await expect(giro).toContainText("nicht aktualisiert");
   await expect(msci).not.toContainText("nicht aktualisiert");
-  await form.getByRole("button", { name: "Speichern" }).click();
+  await form.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(form.getByRole("status")).toHaveText("Monatsstand für Februar 2026 gespeichert.");
 
   // A typo is reported, not saved.
   await msci.getByLabel("Wert").fill("10,250,00");
   await expect(msci.getByRole("alert")).toHaveText("Bitte einen Betrag wie 1.234,56 eingeben.");
-  await expect(form.getByRole("button", { name: "Speichern" })).toBeDisabled();
+  await expect(form.getByRole("button", { name: "Speichern", exact: true })).toBeDisabled();
 
   await page.getByRole("button", { name: "Übersicht" }).click();
   await expect(page.getByLabel("Aktuelles Vermögen")).toHaveText("11.750,00 €");
