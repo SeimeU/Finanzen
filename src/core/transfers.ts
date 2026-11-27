@@ -50,7 +50,7 @@ export function transferSuggestions(document: WealthDocument): TransferSuggestio
   return chosen.sort((a, b) => compare(b.outgoing.bookingDate, a.outgoing.bookingDate));
 }
 
-/** Accepts a current suggestion: both Transactions are marked as Transfers. */
+/** Accepts a current suggestion: both Transactions are marked as Transfers, as a pair. */
 export function acceptTransferSuggestion(document: WealthDocument, input: PairInput): Result<{ document: WealthDocument }> {
   if (!isSuggested(document, input)) return suggestionNotFound();
   const ids = new Set([input.outgoingId, input.incomingId]);
@@ -58,7 +58,16 @@ export function acceptTransferSuggestion(document: WealthDocument, input: PairIn
     ok: true,
     document: {
       ...document,
-      transactions: document.transactions.map((t) => (ids.has(t.id) ? { ...t, transferMark: true, manualCategoryId: null } : t)),
+      transactions: document.transactions.map((t) =>
+        ids.has(t.id)
+          ? {
+              ...t,
+              transferMark: true,
+              manualCategoryId: null,
+              transferPartnerId: t.id === input.outgoingId ? input.incomingId : input.outgoingId,
+            }
+          : t,
+      ),
     },
   };
 }
@@ -106,7 +115,8 @@ function compare(a: string, b: string): number {
 
 /**
  * Marks (true) or unmarks (false) a Transaction as a Transfer by hand, overriding detection;
- * null leaves it to detection again. Marking clears a manual Category.
+ * null leaves it to detection again. Marking clears a manual Category. Unmarking (false or
+ * null) one side of an accepted pair does the same to its counterpart and dissolves the pair.
  */
 export function setTransfer(
   document: WealthDocument,
@@ -116,15 +126,22 @@ export function setTransfer(
     return fail("transaction-not-found", "Diesen Umsatz gibt es nicht.");
   }
   const mark = input.transfer === true || input.transfer === false ? input.transfer : null;
+  const partnerId = mark === true ? null : document.transactions.find((t) => t.id === input.transactionId)!.transferPartnerId;
   return {
     ok: true,
     document: {
       ...document,
-      transactions: document.transactions.map((t) =>
-        t.id === input.transactionId
-          ? { ...t, transferMark: mark, manualCategoryId: mark === true ? null : t.manualCategoryId }
-          : t,
-      ),
+      transactions: document.transactions.map((t) => {
+        if (t.id === input.transactionId) {
+          return {
+            ...t,
+            transferMark: mark,
+            manualCategoryId: mark === true ? null : t.manualCategoryId,
+            transferPartnerId: mark === true ? t.transferPartnerId : null,
+          };
+        }
+        return t.id === partnerId ? { ...t, transferMark: mark, transferPartnerId: null } : t;
+      }),
     },
   };
 }

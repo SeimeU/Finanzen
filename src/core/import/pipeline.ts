@@ -102,6 +102,7 @@ export function confirmImport(
       manualCategoryId: null,
       ruleCategoryId: ruleCategoryFor(document.categorizationRules, t),
       transferMark: null,
+      transferPartnerId: null,
     }));
     const dates = read.transactions.map((t) => t.bookingDate).sort();
     const record: ImportRecord = {
@@ -123,15 +124,19 @@ export function confirmImport(
 }
 
 /**
- * Removes an import and exactly the Transactions it stored, and the rejected Transfer
- * suggestions naming them (their ids may be given out again by a later import).
+ * Removes an import and exactly the Transactions it stored, their links from Transfer pairs,
+ * and the rejected Transfer suggestions naming them (their ids may be given out again by a later import).
  */
 export function undoImport(document: WealthDocument, input: { importId: string }): Result<{ document: WealthDocument }> {
   if (!document.imports.some((i) => i.id === input.importId)) {
     return fail("import-not-found", "Diesen Import gibt es nicht.");
   }
-  const transactions = document.transactions.filter((t) => t.importId !== input.importId);
-  const kept = new Set(transactions.map((t) => t.id));
+  const remaining = document.transactions.filter((t) => t.importId !== input.importId);
+  const kept = new Set(remaining.map((t) => t.id));
+  // A Transfer pair whose other side goes away is dissolved; the remaining side keeps its mark.
+  const transactions = remaining.map((t) =>
+    t.transferPartnerId !== null && !kept.has(t.transferPartnerId) ? { ...t, transferPartnerId: null } : t,
+  );
   return {
     ok: true,
     document: {

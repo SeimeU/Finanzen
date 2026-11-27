@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(14);
+    expect(CURRENT_SCHEMA_VERSION).toBe(15);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -69,7 +69,7 @@ describe("data document", () => {
     const result = loadDocument(v6);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, ruleCategoryId: null, transferMark: null, transferPartnerId: null }]);
   });
 
   it("a version 8 document gets no Categorization rules, and its Transactions no rule Category", () => {
@@ -78,7 +78,7 @@ describe("data document", () => {
     const result = loadDocument(v8);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.categorizationRules).toEqual([]);
-    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null, transferPartnerId: null }]);
   });
 
   it("a version 10 document's Transactions get no Transfer mark and nothing is rejected yet", () => {
@@ -86,8 +86,14 @@ describe("data document", () => {
     delete v10.rejectedTransferSuggestions;
     const result = loadDocument(v10);
     if (!result.ok) throw new Error(result.error.message);
-    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
+    expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null, transferPartnerId: null }]);
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
+  });
+
+  it("a version 14 document's Transactions belong to no Transfer pair", () => {
+    const v14 = { ...createEmptyDocument(), schemaVersion: 14, transactions: [{ id: "t1", transferMark: true }] };
+    const result = loadDocument(v14);
+    expect(result.ok && result.document.transactions).toEqual([{ id: "t1", transferMark: true, transferPartnerId: null }]);
   });
 
   it("a version 13 document's import ranges become the months of their first and last booking", () => {

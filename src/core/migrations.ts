@@ -90,6 +90,12 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
       coveredTo: i.coveredTo.slice(0, 7),
     })),
   }),
+  // 14 → 15: Transfer pairs. Pairs accepted before are not known, so none is linked.
+  14: (document) => ({
+    ...document,
+    schemaVersion: 15,
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, transferPartnerId: null })),
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

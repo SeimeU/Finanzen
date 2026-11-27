@@ -174,6 +174,11 @@ export type Transaction = {
    * A mark and a manual Category exclude each other: setting one clears the other.
    */
   transferMark: boolean | null;
+  /**
+   * The other side of an accepted Transfer suggestion (null otherwise). Unmarking either side
+   * (false or null) gives the counterpart the same mark and dissolves the pair.
+   */
+  transferPartnerId: string | null;
 };
 
 /**
@@ -274,7 +279,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 15;
 
 export function createEmptyDocument(): WealthDocument {
   return {

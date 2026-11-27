@@ -227,6 +227,40 @@ describe("Transfer suggestions by amount", () => {
     expect(suggested(accepted)).toEqual([]);
   });
 
+  it("unmarking one side of an accepted pair unmarks its counterpart too", () => {
+    const { document } = elbaToTradeRepublic({});
+    const pair = { outgoingId: idOf(document, "Sparen November"), incomingId: idOf(document, "Einzahlung") };
+    const accepted = must(acceptTransferSuggestion(document, pair)).document;
+
+    const unmarked = must(setTransfer(accepted, { transactionId: pair.incomingId, transfer: false })).document;
+    expect(kinds(unmarked)).toMatchObject({
+      "Sparen November": "uncategorized (unknown)",
+      Einzahlung: "uncategorized (unknown)",
+    });
+
+    const automatic = must(setTransfer(accepted, { transactionId: pair.outgoingId, transfer: null })).document;
+    expect(automatic.transactions.filter((t) => t.id === pair.outgoingId || t.id === pair.incomingId).map((t) => t.transferMark)).toEqual([
+      null,
+      null,
+    ]);
+    // Back to automatic detection: suggested again.
+    expect(suggested(automatic)).toEqual(["Sparen November → Einzahlung"]);
+  });
+
+  it("after the counterpart's import is undone, unmarking the other side touches no re-imported Transaction", () => {
+    const { document, tr } = elbaToTradeRepublic({});
+    const pair = { outgoingId: idOf(document, "Sparen November"), incomingId: idOf(document, "Einzahlung") };
+    const accepted = must(acceptTransferSuggestion(document, pair)).document;
+    const trImport = accepted.imports.find((i) => i.fileName === "tr.csv")!;
+    const undone = must(undoImport(accepted, { importId: trImport.id })).document;
+    const trText = [TR_HEADER, trRow({ date: "2026-11-20", amount: "77.00", type: "CUSTOMER_INBOUND", description: "Neu", iban: ELBA_IBAN })].join("\n");
+    const reimported = importFiles(undone, [{ name: "tr.csv", text: trText, accountId: tr }]);
+    const marked = must(setTransfer(reimported, { transactionId: idOf(reimported, "Neu"), transfer: true })).document;
+
+    const unmarked = must(setTransfer(marked, { transactionId: pair.outgoingId, transfer: false })).document;
+    expect(kinds(unmarked)).toMatchObject({ "Sparen November": "uncategorized (unknown)", Neu: "Umbuchung (manual, excluded)" });
+  });
+
   it("rejecting keeps both as ordinary Transactions and the pair is never suggested again", () => {
     const { document } = elbaToTradeRepublic({});
     const pair = { outgoingId: idOf(document, "Sparen November"), incomingId: idOf(document, "Einzahlung") };
