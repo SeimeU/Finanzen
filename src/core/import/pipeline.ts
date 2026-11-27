@@ -103,8 +103,11 @@ export function confirmImport(
       ruleCategoryId: ruleCategoryFor(document.categorizationRules, t),
       transferMark: null,
     }));
+    const dates = read.transactions.map((t) => t.bookingDate).sort();
     const record: ImportRecord = {
       id: importId,
+      coveredFrom: dates[0]!,
+      coveredTo: dates.at(-1)!,
       fileName: file.name,
       profileId: read.profile.id,
       accountId: file.accountId,

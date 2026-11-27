@@ -42,7 +42,7 @@ export function createAccount(document: WealthDocument, input: AccountInput): Cr
   return {
     ok: true,
     id,
-    document: { ...document, accounts: [...document.accounts, { ...account.value, id, perHoldingFrom: null, closingMonth: null }] },
+    document: { ...document, accounts: [...document.accounts, { ...account.value, id, perHoldingFrom: null, closingMonth: null, carriesCashFlow: false }] },
   };
 }
 
@@ -89,7 +89,7 @@ export function updateAccount(
     ok: true,
     document: {
       ...document,
-      accounts: document.accounts.map((a) => (a.id === input.id ? { ...account.value, perHoldingFrom: a.perHoldingFrom, closingMonth: a.closingMonth } : a)),
+      accounts: document.accounts.map((a) => (a.id === input.id ? { ...account.value, perHoldingFrom: a.perHoldingFrom, closingMonth: a.closingMonth, carriesCashFlow: a.carriesCashFlow } : a)),
     },
   };
 }
@@ -170,7 +170,7 @@ function validAccount(
   document: WealthDocument,
   id: string,
   input: AccountInput,
-): Valid<Omit<Account, "perHoldingFrom" | "closingMonth">> {
+): Valid<Omit<Account, "perHoldingFrom" | "closingMonth" | "carriesCashFlow">> {
   if (!document.institutions.some((i) => i.id === input.institutionId)) {
     return fail("institution-not-found", "Das Institut gibt es nicht.");
   }

@@ -64,6 +64,20 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     transactions: (document.transactions as object[]).map((t) => ({ ...t, transferMark: null })),
     rejectedTransferSuggestions: [],
   }),
+  // 11 → 12: spending analysis: no Account flagged as carrying income or spending yet, and each
+  // import's covered date range (taken from the Transactions it stored; its duplicates are unknown).
+  11: (document) => {
+    const transactions = document.transactions as { importId: string; bookingDate: string }[];
+    return {
+      ...document,
+      schemaVersion: 12,
+      accounts: (document.accounts as object[]).map((a) => ({ ...a, carriesCashFlow: false })),
+      imports: (document.imports as { id: string }[]).map((i) => {
+        const dates = transactions.filter((t) => t.importId === i.id).map((t) => t.bookingDate).sort();
+        return { ...i, coveredFrom: dates[0] ?? "", coveredTo: dates.at(-1) ?? "" };
+      }),
+    };
+  },
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

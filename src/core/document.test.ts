@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(11);
+    expect(CURRENT_SCHEMA_VERSION).toBe(12);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -59,7 +59,7 @@ describe("data document", () => {
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
     expect(result.document.importAccountChoices).toEqual([]);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
-    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null, closingMonth: null }]);
+    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null, closingMonth: null, carriesCashFlow: false }]);
     expect(result.document.holdings).toEqual([{ id: "h1", accountId: "a1", name: "Giro", classification: {}, startMonth: null, closingMonth: null }]);
     expect(result.document.snapshots).toEqual([{ month: "2026-01", holdingValues: [], accountValues: [] }]);
   });
@@ -88,6 +88,27 @@ describe("data document", () => {
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, ruleCategoryId: null, transferMark: null }]);
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
+  });
+
+  it("a version 11 document gets no Account flagged as carrying income or spending, and each import the date range of its Transactions", () => {
+    const account = { id: "a1", institutionId: "i1", name: "Giro" };
+    const v11 = {
+      ...createEmptyDocument(),
+      schemaVersion: 11,
+      accounts: [account],
+      imports: [{ id: "imp1", accountId: "a1" }],
+      transactions: [
+        { id: "t1", importId: "imp1", bookingDate: "2026-03-05" },
+        { id: "t2", importId: "imp1", bookingDate: "2026-01-31" },
+        { id: "t3", importId: "imp1", bookingDate: "2026-02-10" },
+      ],
+    };
+    const result = loadDocument(v11);
+    expect(result.ok && result.document).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      accounts: [{ ...account, carriesCashFlow: false }],
+      imports: [{ id: "imp1", accountId: "a1", coveredFrom: "2026-01-31", coveredTo: "2026-03-05" }],
+    });
   });
 
   it("a version 7 document gets Account-level values: none recorded, every Account per Holding", () => {

@@ -63,6 +63,7 @@ describe("Accounts", () => {
         isDebt: false,
         defaultClassification: AVAILABLE_CASH,
         closingMonth: null,
+        carriesCashFlow: false,
         holdings: [],
       },
     ]);

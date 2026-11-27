@@ -133,6 +133,8 @@ describe("confirming an import", () => {
         importedAt: IMPORTED_AT,
         transactionCount: 6,
         duplicateCount: 0,
+        coveredFrom: "2026-04-01",
+        coveredTo: "2026-05-20",
       },
     ]);
   });

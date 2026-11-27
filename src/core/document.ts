@@ -45,6 +45,11 @@ export type Account = {
   perHoldingFrom: YearMonth | null;
   /** The first month the Account no longer appears in (closed as of it). null: open. See ./closing.ts. */
   closingMonth: YearMonth | null;
+  /**
+   * The Account carries income or spending (e.g. a Girokonto): a month's Savings rate is only
+   * shown once this Account's imports cover the whole month. See ./spending.ts.
+   */
+  carriesCashFlow: boolean;
 };
 
 /**
@@ -200,6 +205,12 @@ export type ImportRecord = {
   importedAt: string;
   transactionCount: number;
   duplicateCount: number;
+  /**
+   * The earliest and latest booking date ("YYYY-MM-DD") among all the file's rows, duplicates
+   * included: the stretch the file covers on its Account, for the Savings rate's completeness.
+   */
+  coveredFrom: string;
+  coveredTo: string;
 };
 
 export const GENERIC_SEPARATORS = [";", ",", "\t", "|"] as const;
@@ -238,7 +249,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 export function createEmptyDocument(): WealthDocument {
   return {
