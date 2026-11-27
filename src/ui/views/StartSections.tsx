@@ -1,7 +1,75 @@
-import { lazy, Suspense, useEffect, useId, useState } from "react";
-import type { ContributionMonth, InstitutionView } from "../../core";
+import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
+import { ASSET_CLASSES, LIQUIDITIES, type ContributionMonth, type CurrentOverview, type InstitutionView } from "../../core";
 import { accountDetailApi, api } from "../api";
 import { formatEur, formatMonth } from "../format";
+import { ASSET_CLASS_LABELS } from "../labels";
+
+const BreakdownChart = lazy(() => import("../BreakdownChart").then((m) => ({ default: m.BreakdownChart })));
+
+/** Liquidity in a breakdown: without a single Maturity date, so "Gebunden" rather than "Gebunden bis". */
+const LIQUIDITY_BREAKDOWN_LABELS = { available: "Verfügbar", locked: "Gebunden" } as const;
+
+type BreakdownRow = { name: string; value: number };
+
+/** Current Vermögen split by Anlageklasse (table), Verfügbarkeit and Institut (small chart and table each). */
+export function BreakdownSection({ overview }: { overview: CurrentOverview }) {
+  const headingId = useId();
+  const { byAssetClass, byLiquidity } = overview;
+  const assetClasses = useMemo(
+    () =>
+      ASSET_CLASSES.filter((c) => byAssetClass[c] !== undefined).map((c) => ({
+        name: ASSET_CLASS_LABELS[c],
+        value: byAssetClass[c]!,
+      })),
+    [byAssetClass],
+  );
+  const liquidity = useMemo(
+    () => LIQUIDITIES.map((l) => ({ name: LIQUIDITY_BREAKDOWN_LABELS[l], value: byLiquidity[l] ?? 0 })),
+    [byLiquidity],
+  );
+  const institutions = useMemo(
+    () => overview.byInstitution.map((i) => ({ name: i.name, value: i.value })),
+    [overview.byInstitution],
+  );
+  return (
+    <section aria-labelledby={headingId}>
+      <h2 id={headingId}>Aufteilung – {formatMonth(overview.month)}</h2>
+      <div className="breakdowns">
+        <div>
+          <BreakdownTable caption="Nach Anlageklasse" rows={assetClasses} />
+        </div>
+        <div>
+          <Suspense fallback={null}>
+            <BreakdownChart label="Nach Verfügbarkeit" rows={liquidity} />
+          </Suspense>
+          <BreakdownTable caption="Nach Verfügbarkeit" rows={liquidity} />
+        </div>
+        <div>
+          <Suspense fallback={null}>
+            <BreakdownChart label="Nach Institut" rows={institutions} />
+          </Suspense>
+          <BreakdownTable caption="Nach Institut" rows={institutions} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BreakdownTable({ caption, rows }: { caption: string; rows: BreakdownRow[] }) {
+  return (
+    <table className="table">
+      <caption>{caption}</caption>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.name}>
+            <th scope="row">{r.name}</th>
+            <td className="amount">{formatEur(r.value)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 const ContributionChart = lazy(() => import("../AccountCharts").then((m) => ({ default: m.ContributionChart })));
 

@@ -221,6 +221,40 @@ section {
   font-variant-numeric: tabular-nums;
 }
 
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.5rem;
+}
+
+.range {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.range button[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.breakdowns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+
+.breakdowns .chart {
+  margin: 0 0 0.75rem;
+}
+
+.table caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.4rem 0;
+}
+
 .chart {
   margin: 1.5rem 0;
   padding: 1rem;

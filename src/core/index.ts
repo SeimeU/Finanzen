@@ -22,6 +22,7 @@ export * from "./snapshots";
 export { accountIsOpen, closeAccount, closeHolding, holdingIsActive, setHoldingStart } from "./closing";
 export * from "./notes";
 export * from "./accountDetail";
+export * from "./overview";
 export { type ImportAccountChoice, type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
 export {
   confirmImport,

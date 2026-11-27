@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatEur, formatEurInput, formatMonth, parseEur } from "./format";
+import { formatChange, formatDate, formatDateTime, formatEur, formatEurInput, formatMonth, formatPercent, parseEur } from "./format";
 
 describe("parseEur (German input → integer cents)", () => {
   it.each([
@@ -65,5 +65,22 @@ describe("formatDateTime (UTC instant in, German local date and time out)", () =
     ["2026-01-02T03:04:05.000Z", "UTC", "02.01.2026 03:04:05"],
   ])("%s in %s → %s", (iso, timeZone, expected) => {
     expect(formatDateTime(iso, timeZone)).toBe(expected);
+  });
+});
+
+describe("formatPercent and formatChange (signed, one decimal)", () => {
+  it.each([
+    [5, "+5,0 %"],
+    [31.25, "+31,3 %"],
+    [-2.04, "-2,0 %"],
+    [0, "0,0 %"],
+  ])("%d → %s", (percent, text) => {
+    expect(formatPercent(percent)).toBe(text);
+  });
+
+  it("shows the amount with a sign, then the percent", () => {
+    expect(formatChange({ amount: 100_000, percent: 5 })).toBe("+1.000,00 € (+5,0 %)");
+    expect(formatChange({ amount: -15_050, percent: -1.5 })).toBe("-150,50 € (-1,5 %)");
+    expect(formatChange({ amount: 10_000, percent: null })).toBe("+100,00 €");
   });
 });
