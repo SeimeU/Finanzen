@@ -15,6 +15,7 @@ import type {
   ImportedFile,
   ImportRecord,
   InstitutionView,
+  MaturityTimeline,
   MonthNotes,
   NetWorthMonth,
   SnapshotForm,
@@ -82,6 +83,11 @@ export const snapshotsApi = {
   /** Sets the Account's first month per Holding (null: every month); replies with formMonth's form. */
   setPerHoldingFrom: (input: { accountId: string; month: string | null; formMonth: string }) =>
     call<{ form: SnapshotForm }>("POST", "/api/snapshots/per-holding-from", input),
+};
+
+/** Maturity timeline of the Locked Holdings, with the next Fälligkeit. */
+export const maturitiesApi = {
+  timeline: () => call<{ timeline: MaturityTimeline }>("GET", "/api/maturities"),
 };
 
 // Kept apart from `api` so tickets adding endpoints in parallel don't collide.

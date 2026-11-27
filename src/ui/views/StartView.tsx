@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import type { CurrentOverview, MonthNotes, NetWorthMonth } from "../../core";
-import { notesApi, snapshotsApi } from "../api";
-import { formatChange, formatEur, formatMonth } from "../format";
+import type { CurrentOverview, MonthNotes, NetWorthMonth, NextMaturity } from "../../core";
+import { maturitiesApi, notesApi, snapshotsApi } from "../api";
+import { formatChange, formatDate, formatEur, formatMonth } from "../format";
 import { MonthNotesSection } from "./MonthNotesSection";
 import { Figure } from "./SnapshotView";
 import { AccountLinks, BreakdownSection, ContributionSection } from "./StartSections";
@@ -21,6 +21,7 @@ export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string
   const [series, setSeries] = useState<NetWorthMonth[] | null>(null);
   const [overview, setOverview] = useState<CurrentOverview | null>(null);
   const [notes, setNotes] = useState<MonthNotes[]>([]);
+  const [nextMaturity, setNextMaturity] = useState<NextMaturity | null>(null);
   const [rangeMonths, setRangeMonths] = useState<number | null>(null);
   /** Month clicked on the chart: its Note and Events open below it. */
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string
     snapshotsApi.netWorth().then((r) => setSeries(r.series));
     snapshotsApi.overview().then((r) => setOverview(r.overview));
     notesApi.list().then((r) => setNotes(r.notes));
+    maturitiesApi.timeline().then((r) => setNextMaturity(r.timeline.next));
   }, []);
 
   const latest = series?.at(-1);
@@ -47,6 +49,12 @@ export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string
             {overview?.vsLastMonth && <Figure label="Veränderung zum Vormonat" value={formatChange(overview.vsLastMonth)} />}
             {overview?.vs12MonthsAgo && (
               <Figure label="Veränderung zum Vorjahresmonat" value={formatChange(overview.vs12MonthsAgo)} />
+            )}
+            {nextMaturity && (
+              <Figure
+                label="Nächste Fälligkeit"
+                value={`${formatDate(nextMaturity.maturityDate)}: ${formatEur(nextMaturity.amount)}`}
+              />
             )}
           </div>
           <p className="empty">Stand {formatMonth(latest.month)}</p>
