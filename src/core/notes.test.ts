@@ -5,6 +5,8 @@ import {
   createHolding,
   createInstitution,
   netWorthSeries,
+  contributionSplit,
+  projection,
   notesAndEvents,
   saveSnapshot,
   setNote,
@@ -48,6 +50,24 @@ describe("Notes", () => {
     next = must(saveSnapshot(next, { month: "2026-01", today: TODAY, holdingValues: [{ holdingId: cash, marketValue: 120_000 }] })).document;
     expect(notesAndEvents(next)).toEqual([{ month: "2026-01", note: "Bonus erhalten", events: [] }]);
     expect(netWorthSeries(next).map((m) => [m.month, m.netWorth])).toEqual([["2026-01", 120_000]]);
+  });
+
+  it("a Note or Event on a month without values adds no month to Net worth or what is derived from it", () => {
+    const { document, cash } = setup();
+    let next = note(document, "2026-01", "Vor dem ersten Monatsstand");
+    next = must(addEvent(next, { month: "2025-12", today: TODAY, label: "Erbschaft", amount: 500_000 })).document;
+    expect(netWorthSeries(next)).toEqual([]);
+    expect(projection(next)).toBeNull();
+
+    next = must(saveSnapshot(next, { month: "2026-02", today: TODAY, holdingValues: [{ holdingId: cash, marketValue: 100_000 }] })).document;
+    next = must(saveSnapshot(next, { month: "2026-03", today: TODAY, holdingValues: [{ holdingId: cash, marketValue: 120_000 }] })).document;
+
+    expect(netWorthSeries(next).map((m) => [m.month, m.netWorth])).toEqual([
+      ["2026-02", 100_000],
+      ["2026-03", 120_000],
+    ]);
+    expect(contributionSplit(next).map((m) => [m.month, m.netWorthChange])).toEqual([["2026-03", 20_000]]);
+    expect(projection(next)!.defaultMonthlySavings).toBe(20_000);
   });
 
   it("setting a Note again replaces it; a blank Note removes it", () => {

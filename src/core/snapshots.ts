@@ -159,7 +159,8 @@ export type NetWorthMonth = {
  * latest earlier value, but never across the Account's switch to per-Holding values.
  */
 export function netWorthSeries(document: WealthDocument): NetWorthMonth[] {
-  const first = document.snapshots[0];
+  // A Snapshot holding only a Note or Events has no values: the series starts at the first month with values.
+  const first = document.snapshots.find((s) => s.holdingValues.length > 0 || s.accountValues.length > 0);
   const last = document.snapshots.at(-1);
   if (!first || !last) return [];
   const series: NetWorthMonth[] = [];
