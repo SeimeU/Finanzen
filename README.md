@@ -6,7 +6,7 @@ Requires Node.js 22.
 
 ## Start the app
 
-- **Windows:** double-click `start.bat`. It installs dependencies on the first run, builds the UI, starts the server on `http://127.0.0.1:4317` and opens the browser.
+- **Windows:** double-click `start.bat`. The first start needs internet once: it installs the dependencies (`npm ci`) and builds the UI. Everything afterwards runs offline: later starts reinstall only when `package-lock.json` changed and rebuild only when the UI is missing or older than the sources, then start the server on `http://127.0.0.1:4317` from the installed and built files and open the browser.
 - **Any OS:** run `npm install`, then `npm run build`, then `npm start` (add `-- --open` to open the browser).
 
 The data file defaults to `data/vermoegen.dat`. Set `FINANZEN_DATA_FILE` to use a different path, and `FINANZEN_PORT` to use a different port.
