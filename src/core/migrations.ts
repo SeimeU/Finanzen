@@ -36,6 +36,13 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     categories: defaultCategories(),
     transactions: (document.transactions as object[]).map((t) => ({ ...t, manualCategoryId: null })),
   }),
+  // 7 → 8: Transfers: the owner's mark on each Transaction and the rejected Transfer suggestions.
+  7: (document) => ({
+    ...document,
+    schemaVersion: 8,
+    transactions: (document.transactions as object[]).map((t) => ({ ...t, transferMark: null })),
+    rejectedTransferSuggestions: [],
+  }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

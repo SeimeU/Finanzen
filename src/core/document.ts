@@ -19,6 +19,8 @@ export type WealthDocument = {
   importAccountChoices: ImportAccountChoice[];
   /** Two levels: top-level Categories (parentId null) and their children. See ./categories.ts. */
   categories: Category[];
+  /** Transfer suggestions the owner rejected, as Transaction id pairs; never suggested again. See ./transfers.ts. */
+  rejectedTransferSuggestions: [string, string][];
 };
 
 export type ImportAccountChoice = { fileName: string; accountId: string };
@@ -106,6 +108,12 @@ export type Transaction = {
   origin: TransactionOrigin;
   /** The Category the owner set by hand; it wins over every automatic classification. */
   manualCategoryId: string | null;
+  /**
+   * The owner's own say on whether this is a Transfer: true marks it (also set by accepting a
+   * suggestion), false unmarks it against automatic detection, null leaves it to detection.
+   * A mark and a manual Category exclude each other: setting one clears the other.
+   */
+  transferMark: boolean | null;
 };
 
 /**
@@ -190,7 +198,7 @@ export type GenericImportProfile = GenericProfileSettings & {
   header: string[] | null;
 };
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export function createEmptyDocument(): WealthDocument {
   return {
@@ -204,6 +212,7 @@ export function createEmptyDocument(): WealthDocument {
     importProfiles: [],
     importAccountChoices: [],
     categories: defaultCategories(),
+    rejectedTransferSuggestions: [],
   };
 }
 

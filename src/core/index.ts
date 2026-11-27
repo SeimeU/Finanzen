@@ -49,5 +49,7 @@ export {
   type CategorySource,
   type ClassifiedTransaction,
   type TransactionClassification,
+  type TransferSource,
 } from "./classification";
+export * from "./transfers";
 export * from "./categories";
