@@ -22,6 +22,7 @@ export * from "./snapshots";
 export * from "./notes";
 export * from "./accountDetail";
 export * from "./overview";
+export * from "./projection";
 export { type ImportAccountChoice, type ImportRecord, type Transaction, type TransactionOrigin } from "./document";
 export {
   confirmImport,

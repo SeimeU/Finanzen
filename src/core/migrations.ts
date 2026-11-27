@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, defaultCategories, type WealthDocument } from "./document";
+import { CURRENT_SCHEMA_VERSION, defaultCategories, defaultProjectionAssumptions, type WealthDocument } from "./document";
 import { fail, type Result } from "./result";
 
 type RawDocument = { schemaVersion: number } & Record<string, unknown>;
@@ -43,6 +43,8 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     accounts: (document.accounts as object[]).map((a) => ({ ...a, perHoldingFrom: null })),
     snapshots: (document.snapshots as object[]).map((s) => ({ ...s, accountValues: [] })),
   }),
+  // 8 → 9: Projection assumptions, at their defaults.
+  8: (document) => ({ ...document, schemaVersion: 9, projectionAssumptions: defaultProjectionAssumptions() }),
 };
 
 /** Validates a parsed JSON value and migrates it to the current schema version. */

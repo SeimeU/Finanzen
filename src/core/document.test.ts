@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(8);
+    expect(CURRENT_SCHEMA_VERSION).toBe(9);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -78,6 +78,16 @@ describe("data document", () => {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       accounts: [{ ...account, perHoldingFrom: null }],
       snapshots: [{ month: "2026-01", holdingValues: [], accountValues: [] }],
+    });
+  });
+
+  it("a version 8 document gets the default Projection assumptions", () => {
+    const v8 = { ...createEmptyDocument(), schemaVersion: 8 } as Record<string, unknown>;
+    delete v8.projectionAssumptions;
+    const result = loadDocument(v8);
+    expect(result.ok && result.document).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      projectionAssumptions: createEmptyDocument().projectionAssumptions,
     });
   });
 

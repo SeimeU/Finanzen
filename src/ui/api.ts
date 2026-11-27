@@ -17,6 +17,8 @@ import type {
   InstitutionView,
   MonthNotes,
   NetWorthMonth,
+  Projection,
+  ProjectionAssumptions,
   SnapshotForm,
   SnapshotInput,
   TransactionFilter,
@@ -106,6 +108,14 @@ export const notesApi = {
 export const accountDetailApi = {
   detail: (id: string) => call<{ detail: AccountDetail }>("POST", "/api/accounts/detail", { id }),
   contributions: () => call<{ months: ContributionMonth[] }>("GET", "/api/contributions"),
+};
+
+/** The stored Projection assumptions, and the Projection (null without any Monatsstand). */
+export type ProjectionReply = { assumptions: ProjectionAssumptions; projection: Projection | null };
+
+export const projectionApi = {
+  get: () => call<ProjectionReply>("GET", "/api/projection"),
+  save: (assumptions: ProjectionAssumptions) => call<ProjectionReply>("POST", "/api/projection/assumptions", assumptions),
 };
 
 /** A dropped CSV file on its way to the server. */

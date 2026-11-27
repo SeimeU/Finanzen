@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import type { CurrentOverview, MonthNotes, NetWorthMonth } from "../../core";
-import { notesApi, snapshotsApi } from "../api";
+import type { CurrentOverview, MonthNotes, NetWorthMonth, Projection } from "../../core";
+import { notesApi, projectionApi, snapshotsApi } from "../api";
 import { formatChange, formatEur, formatMonth } from "../format";
 import { MonthNotesSection } from "./MonthNotesSection";
 import { Figure } from "./SnapshotView";
@@ -22,6 +22,8 @@ export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string
   const [overview, setOverview] = useState<CurrentOverview | null>(null);
   const [notes, setNotes] = useState<MonthNotes[]>([]);
   const [rangeMonths, setRangeMonths] = useState<number | null>(null);
+  const [projection, setProjection] = useState<Projection | null>(null);
+  const [showProjection, setShowProjection] = useState(false);
   /** Month clicked on the chart: its Note and Events open below it. */
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
@@ -29,6 +31,7 @@ export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string
     snapshotsApi.netWorth().then((r) => setSeries(r.series));
     snapshotsApi.overview().then((r) => setOverview(r.overview));
     notesApi.list().then((r) => setNotes(r.notes));
+    projectionApi.get().then((r) => setProjection(r.projection));
   }, []);
 
   const latest = series?.at(-1);
@@ -62,9 +65,24 @@ export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string
                 {r.label}
               </button>
             ))}
+            {projection && (
+              <button
+                type="button"
+                className="secondary"
+                aria-pressed={showProjection}
+                onClick={() => setShowProjection(!showProjection)}
+              >
+                Prognose anzeigen
+              </button>
+            )}
           </div>
           <Suspense fallback={null}>
-            <NetWorthChart series={shown} notes={notes} onSelectMonth={setSelectedMonth} />
+            <NetWorthChart
+              series={shown}
+              notes={notes}
+              onSelectMonth={setSelectedMonth}
+              projection={showProjection ? projection?.months : undefined}
+            />
           </Suspense>
           {selectedMonth ? (
             <MonthNotesSection month={selectedMonth} onChange={setNotes} />
