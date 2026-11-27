@@ -9,6 +9,7 @@ import { RulesView } from "./views/RulesView";
 import { ImportView } from "./views/ImportView";
 import { SettingsView } from "./views/SettingsView";
 import { SnapshotView } from "./views/SnapshotView";
+import { SpendingView } from "./views/SpendingView";
 import { StartView } from "./views/StartView";
 import { TransactionsView } from "./views/TransactionsView";
 import { TransfersView } from "./views/TransfersView";
@@ -26,6 +27,7 @@ const VIEWS = {
   categories: "Kategorien",
   rules: "Regeln",
   transfers: "Umbuchungen",
+  spending: "Ausgaben & Sparquote",
   import: "Import",
   accounts: "Konten verwalten",
   settings: "Einstellungen",
@@ -87,6 +89,7 @@ export function UnlockedApp({ onLocked }: { onLocked: () => void }) {
           {view === "categories" && <CategoriesView />}
           {view === "rules" && <RulesView />}
           {view === "transfers" && <TransfersView />}
+          {view === "spending" && <SpendingView />}
           {view === "import" && <ImportView />}
           {view === "accounts" && <AccountsView onOpenAccount={setOpenAccountId} />}
           {view === "settings" && <SettingsView />}

@@ -49,6 +49,7 @@ import {
   type WealthDocument,
 } from "../core";
 import { addEvent, deleteEvent, notesAndEvents, setNote, updateEvent } from "../core";
+import { cashFlowMonths, categoryHistory, categorySpending, setAccountCarriesCashFlow } from "../core";
 import * as store from "../store";
 import { writeSettings } from "./settings";
 
@@ -75,6 +76,7 @@ type Handler = (body: Record<string, unknown>) => Promise<Reply>;
 const categoriesView = (document: WealthDocument) => ({ categories: listCategories(document) });
 const rulesView = (document: WealthDocument) => ({ rules: listRules(document) });
 const suggestionsView = (document: WealthDocument) => ({ suggestions: transferSuggestions(document) });
+const cashFlowView = (document: WealthDocument) => ({ months: cashFlowMonths(document), structure: listStructure(document) });
 
 export function createApp(initialConfig: AppConfig): Server {
   // The data file location can change at runtime (settings), so keep a mutable copy.
@@ -382,6 +384,14 @@ export function createApp(initialConfig: AppConfig): Server {
     "POST /api/rules/delete": command(deleteRule, rulesView),
     "POST /api/rules/move": command(moveRule, rulesView),
     "POST /api/rules/reapply": command(reapplyRules, rulesView),
+
+    // Spending analysis (Ausgaben & Sparquote). The flag command replies with the months and the structure.
+    "GET /api/cash-flow": async () => (session ? ok(cashFlowView(session.document)) : locked()),
+    "POST /api/spending/categories": async (body) =>
+      session ? ok({ rows: categorySpending(session.document, body as Parameters<typeof categorySpending>[1]) }) : locked(),
+    "POST /api/spending/history": async (body) =>
+      session ? ok({ history: categoryHistory(session.document, body as Parameters<typeof categoryHistory>[1]) }) : locked(),
+    "POST /api/accounts/carries-cash-flow": command(setAccountCarriesCashFlow, cashFlowView),
   };
 
   return createServer(async (request, response) => {

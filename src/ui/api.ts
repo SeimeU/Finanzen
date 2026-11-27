@@ -2,6 +2,8 @@
 import type {
   AccountDetail,
   AccountInput,
+  CashFlowMonth,
+  CategorySpendingRow,
   CategorizationRule,
   CategoryKind,
   CategoryNode,
@@ -166,6 +168,19 @@ export const transfersApi = {
     call<Suggestions>("POST", "/api/transfer-suggestions/accept", { outgoingId, incomingId }),
   reject: (outgoingId: string, incomingId: string) =>
     call<Suggestions>("POST", "/api/transfer-suggestions/reject", { outgoingId, incomingId }),
+};
+
+/** Spending analysis (Ausgaben & Sparquote). Amounts in positive cents. */
+type CashFlow = { months: CashFlowMonth[] } & Structure;
+export const spendingApi = {
+  cashFlow: () => call<CashFlow>("GET", "/api/cash-flow"),
+  /** parentId null: top-level Categories plus Nicht kategorisiert; else that Category's children. */
+  categories: (input: { period: string; kind: CategoryKind; parentId: string | null }) =>
+    call<{ rows: CategorySpendingRow[] }>("POST", "/api/spending/categories", input),
+  history: (input: { categoryId: string | null; by: "month" | "year" }) =>
+    call<{ history: { period: string; amount: number }[] }>("POST", "/api/spending/history", input),
+  setCarriesCashFlow: (accountId: string, carriesCashFlow: boolean) =>
+    call<CashFlow>("POST", "/api/accounts/carries-cash-flow", { accountId, carriesCashFlow }),
 };
 
 export const importProfilesApi = {

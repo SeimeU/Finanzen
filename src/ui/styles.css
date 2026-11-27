@@ -427,3 +427,8 @@ button:disabled {
   align-items: center;
   max-width: none;
 }
+
+/* Spending analysis: a month whose Sparquote is withheld. */
+.incomplete {
+  color: #8a5a00;
+}
