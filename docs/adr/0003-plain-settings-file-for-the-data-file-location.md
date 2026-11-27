@@ -1,0 +1,3 @@
+# A plain settings file holds the data file location
+
+The owner can move the data file (for example to another drive), and the app must know where it is before the owner unlocks it, so the location cannot live inside the encrypted document. We keep it in a small plain JSON file, `einstellungen.json` next to the default data file (`src/server/settings.ts`), which wins over `FINANZEN_DATA_FILE`. We chose this over asking for the path on every start, which is tedious, and over encrypting the settings too, which needs the password before it is known. It is acceptable unencrypted because it holds no financial data, only a file path; anything else the app needs before unlocking would have to meet the same bar.
