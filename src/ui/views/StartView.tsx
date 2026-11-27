@@ -1,43 +1,77 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import type { MonthNotes, NetWorthMonth } from "../../core";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import type { CurrentOverview, MonthNotes, NetWorthMonth } from "../../core";
 import { notesApi, snapshotsApi } from "../api";
-import { formatEur, formatMonth } from "../format";
+import { formatChange, formatEur, formatMonth } from "../format";
 import { MonthNotesSection } from "./MonthNotesSection";
 import { Figure } from "./SnapshotView";
-import { AccountLinks, ContributionSection } from "./StartSections";
+import { AccountLinks, BreakdownSection, ContributionSection } from "./StartSections";
 
 // ECharts is large: load it in its own chunk, only when there is a chart to show.
 const NetWorthChart = lazy(() => import("../NetWorthChart").then((m) => ({ default: m.NetWorthChart })));
 
-/** Start screen: current Net worth and its history. Navigation is in UnlockedApp. */
+/** Chart time ranges: the latest n months, or all (null). */
+const RANGES = [
+  { label: "1 Jahr", months: 12 },
+  { label: "5 Jahre", months: 60 },
+  { label: "Alle", months: null },
+] as const;
+
+/** Start screen: current Net worth, its changes, history and breakdowns. Navigation is in UnlockedApp. */
 export function StartView({ onOpenAccount }: { onOpenAccount: (accountId: string) => void }) {
   const [series, setSeries] = useState<NetWorthMonth[] | null>(null);
+  const [overview, setOverview] = useState<CurrentOverview | null>(null);
   const [notes, setNotes] = useState<MonthNotes[]>([]);
+  const [rangeMonths, setRangeMonths] = useState<number | null>(null);
   /** Month clicked on the chart: its Note and Events open below it. */
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   useEffect(() => {
     snapshotsApi.netWorth().then((r) => setSeries(r.series));
+    snapshotsApi.overview().then((r) => setOverview(r.overview));
     notesApi.list().then((r) => setNotes(r.notes));
   }, []);
 
   const latest = series?.at(-1);
+  const shown = useMemo(
+    () => (series && rangeMonths !== null ? series.slice(-rangeMonths) : (series ?? [])),
+    [series, rangeMonths],
+  );
   return (
     <main className="page">
       <h1>Vermögen</h1>
       {series !== null && !latest && <p className="empty">Noch kein Monatsstand erfasst.</p>}
       {latest && (
         <>
-          <Figure label="Aktuelles Vermögen" value={formatEur(latest.netWorth)} />
+          <div className="figures">
+            <Figure label="Aktuelles Vermögen" value={formatEur(latest.netWorth)} />
+            {overview?.vsLastMonth && <Figure label="Veränderung zum Vormonat" value={formatChange(overview.vsLastMonth)} />}
+            {overview?.vs12MonthsAgo && (
+              <Figure label="Veränderung zum Vorjahresmonat" value={formatChange(overview.vs12MonthsAgo)} />
+            )}
+          </div>
           <p className="empty">Stand {formatMonth(latest.month)}</p>
+          <div className="range" role="group" aria-label="Zeitraum">
+            {RANGES.map((r) => (
+              <button
+                key={r.label}
+                type="button"
+                className="secondary"
+                aria-pressed={rangeMonths === r.months}
+                onClick={() => setRangeMonths(r.months)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <Suspense fallback={null}>
-            <NetWorthChart series={series!} notes={notes} onSelectMonth={setSelectedMonth} />
+            <NetWorthChart series={shown} notes={notes} onSelectMonth={setSelectedMonth} />
           </Suspense>
           {selectedMonth ? (
             <MonthNotesSection month={selectedMonth} onChange={setNotes} />
           ) : (
             <p className="empty">Einen Monat im Diagramm anklicken, um Notiz und Ereignisse zu erfassen.</p>
           )}
+          {overview && <BreakdownSection overview={overview} />}
           <ContributionSection />
         </>
       )}

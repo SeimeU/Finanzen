@@ -5,7 +5,7 @@ describe("data document", () => {
   it("a new document is empty and carries the current schema version", () => {
     const document = createEmptyDocument();
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(8);
+    expect(CURRENT_SCHEMA_VERSION).toBe(9);
     expect(document).toMatchObject({ institutions: [], accounts: [], holdings: [], snapshots: [], transactions: [], imports: [] });
   });
 
@@ -30,9 +30,17 @@ describe("data document", () => {
     expect(result.document.importAccountChoices).toEqual([]);
   });
 
-  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories", () => {
+  it("a version 4 document migrates through every step: no Import profiles, ELBA fields, no remembered Accounts, default Categories, Account-level values", () => {
     const origin = { category: "CASH", type: "BUY", transactionId: "x", feeCents: null, taxCents: null, securityName: null, isin: null };
-    const v4 = { ...createEmptyDocument(), schemaVersion: 4, transactions: [{ id: "t1", origin }] } as Record<string, unknown>;
+    const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {} };
+    const v4 = {
+      ...createEmptyDocument(),
+      schemaVersion: 4,
+      institutions: [{ id: "i1", name: "Bank" }],
+      accounts: [account],
+      snapshots: [{ month: "2026-01", holdingValues: [] }],
+      transactions: [{ id: "t1", origin }],
+    } as Record<string, unknown>;
     delete v4.importProfiles;
     delete v4.importAccountChoices;
     delete v4.categories;
@@ -44,6 +52,8 @@ describe("data document", () => {
     expect(result.document.transactions[0]!.manualCategoryId).toBeNull();
     expect(result.document.importAccountChoices).toEqual([]);
     expect(result.document.categories).toEqual(createEmptyDocument().categories);
+    expect(result.document.accounts).toEqual([{ ...account, perHoldingFrom: null }]);
+    expect(result.document.snapshots).toEqual([{ month: "2026-01", holdingValues: [], accountValues: [] }]);
   });
 
   it("a version 6 document gets the default Categories and its Transactions no manual Category", () => {
@@ -54,13 +64,30 @@ describe("data document", () => {
     expect(result.document.transactions).toEqual([{ id: "t1", purpose: "Billa", manualCategoryId: null, transferMark: null }]);
   });
 
-  it("a version 7 document's Transactions get no Transfer mark and nothing is rejected yet", () => {
-    const v7 = { ...createEmptyDocument(), schemaVersion: 7, transactions: [{ id: "t1", manualCategoryId: null }] } as Record<string, unknown>;
-    delete v7.rejectedTransferSuggestions;
-    const result = loadDocument(v7);
+  it("a version 8 document's Transactions get no Transfer mark and nothing is rejected yet", () => {
+    const v8 = { ...createEmptyDocument(), schemaVersion: 8, transactions: [{ id: "t1", manualCategoryId: null }] } as Record<string, unknown>;
+    delete v8.rejectedTransferSuggestions;
+    const result = loadDocument(v8);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.document.transactions).toEqual([{ id: "t1", manualCategoryId: null, transferMark: null }]);
     expect(result.document.rejectedTransferSuggestions).toEqual([]);
+  });
+
+  it("a version 7 document gets Account-level values: none recorded, every Account per Holding", () => {
+    const account = { id: "a1", institutionId: "i1", name: "Giro", iban: null, isDebt: false, defaultClassification: {} };
+    const v7 = {
+      ...createEmptyDocument(),
+      schemaVersion: 7,
+      institutions: [{ id: "i1", name: "Bank" }],
+      accounts: [account],
+      snapshots: [{ month: "2026-01", holdingValues: [] }],
+    };
+    const result = loadDocument(v7);
+    expect(result.ok && result.document).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      accounts: [{ ...account, perHoldingFrom: null }],
+      snapshots: [{ month: "2026-01", holdingValues: [], accountValues: [] }],
+    });
   });
 
   it("rejects a document from a newer app version", () => {

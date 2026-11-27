@@ -36,10 +36,17 @@ const MIGRATIONS: Record<number, (document: RawDocument) => RawDocument> = {
     categories: defaultCategories(),
     transactions: (document.transactions as object[]).map((t) => ({ ...t, manualCategoryId: null })),
   }),
-  // 7 → 8: Transfers: the owner's mark on each Transaction and the rejected Transfer suggestions.
+  // 7 → 8: Account-level values and each Account's switch to per-Holding values.
   7: (document) => ({
     ...document,
     schemaVersion: 8,
+    accounts: (document.accounts as object[]).map((a) => ({ ...a, perHoldingFrom: null })),
+    snapshots: (document.snapshots as object[]).map((s) => ({ ...s, accountValues: [] })),
+  }),
+  // 8 → 9: Transfers: the owner's mark on each Transaction and the rejected Transfer suggestions.
+  8: (document) => ({
+    ...document,
+    schemaVersion: 9,
     transactions: (document.transactions as object[]).map((t) => ({ ...t, transferMark: null })),
     rejectedTransferSuggestions: [],
   }),

@@ -40,6 +40,19 @@ export function formatMonth(yearMonth: string): string {
   return `${MONTH_NAMES[Number(month) - 1]} ${year}`;
 }
 
+/** 5 → "+5,0 %", -2.04 → "-2,0 %": signed, one decimal. */
+export function formatPercent(percent: number): string {
+  const rounded = Math.round(percent * 10) / 10;
+  const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
+  return `${sign}${Math.abs(rounded).toFixed(1).replace(".", ",")} %`;
+}
+
+/** A change in cents and percent → "+1.000,00 € (+5,0 %)"; without a percent just the signed amount. */
+export function formatChange(change: { amount: number; percent: number | null }): string {
+  const amount = `${change.amount > 0 ? "+" : ""}${formatEur(change.amount)}`;
+  return change.percent === null ? amount : `${amount} (${formatPercent(change.percent)})`;
+}
+
 /** "2025-03-31" → "31.03.2025". Takes an ISO calendar date, never a Date (no time-zone shifts). */
 export function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
